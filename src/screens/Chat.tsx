@@ -2,18 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/Icon";
+import { Markdown } from "@/components/Markdown";
 import { useCat } from "@/context/CatContext";
 import type { ChatMessage } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-/* Atrapa odpowiedzi — behawiorysta AI zostanie podłączony do API później
-   (docelowo Next.js API route z kluczem w env). UI jest w pełni działające. */
-function mockReply(): string {
-  return `To podgląd rozmowy z behawiorystą. Wkrótce odpowie tu prawdziwy asystent AI — przeanalizuje Twój dziennik z zakładki „Dziś", profil zabawy i rytuał, a potem podpowie konkretne kroki.\n\nNa razie zapisuj obserwacje w zakładce „Dziś" — to z nich będzie korzystał.`;
-}
-
 export function Chat() {
-  const { profile } = useCat();
+  const { profile, playProfile, pillars, logs } = useCat();
   const name = profile?.name ?? "kota";
 
   const [msgs, setMsgs] = useState<ChatMessage[]>([]);
@@ -32,16 +27,37 @@ export function Chat() {
     "Czy dobrze urządziłem mu środowisko?",
   ];
 
-  const send = (text?: string) => {
+  const send = async (text?: string) => {
     const q = (text ?? input).trim();
     if (!q || busy) return;
-    setMsgs((m) => [...m, { role: "user", content: q }]);
+    const nextMsgs: ChatMessage[] = [...msgs, { role: "user", content: q }];
+    setMsgs(nextMsgs);
     setInput("");
     setBusy(true);
-    window.setTimeout(() => {
-      setMsgs((m) => [...m, { role: "assistant", content: mockReply() }]);
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: nextMsgs,
+          context: { profile, playProfile, pillars, logs },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error ?? "Błąd serwera");
+      setMsgs((m) => [...m, { role: "assistant", content: data.reply }]);
+    } catch {
+      setMsgs((m) => [
+        ...m,
+        {
+          role: "assistant",
+          content:
+            "Przepraszam, coś poszło nie tak po mojej stronie. Spróbuj ponownie za chwilę.",
+        },
+      ]);
+    } finally {
       setBusy(false);
-    }, 600);
+    }
   };
 
   return (
@@ -72,16 +88,20 @@ export function Chat() {
           <div
             key={i}
             className={cn(
-              "max-w-[88%] whitespace-pre-wrap px-3.5 py-3 text-base leading-normal",
+              "max-w-[88%] px-3.5 py-3 text-base leading-normal",
               m.role === "user"
-                ? "self-end rounded-[16px_16px_4px_16px] bg-ink text-paper"
+                ? "self-end whitespace-pre-wrap rounded-[16px_16px_4px_16px] bg-ink text-paper"
                 : "flex flex-col gap-1 self-start rounded-[16px_16px_16px_4px] border-2 border-ink bg-paper",
             )}
           >
-            {m.role === "assistant" && (
-              <span className="font-hand text-xs font-bold">behawiorysta</span>
+            {m.role === "user" ? (
+              <span>{m.content}</span>
+            ) : (
+              <>
+                <span className="font-hand text-xs font-bold">behawiorysta</span>
+                <Markdown>{m.content}</Markdown>
+              </>
             )}
-            <span>{m.content}</span>
           </div>
         ))}
 
