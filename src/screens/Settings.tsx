@@ -19,6 +19,7 @@ import {
   type CatFormValues,
 } from "@/components/CatProfileFields";
 import { useCat } from "@/context/CatContext";
+import { useAuth } from "@/context/AuthContext";
 import { demoLogs } from "@/lib/demo";
 
 function label<T extends string>(list: { v: T; l: string }[], value: T | undefined): string {
@@ -39,6 +40,7 @@ function Row({ icon, term, children }: { icon: IconName; term: string; children:
 
 export function Settings() {
   const { profile, playProfile, logs, saveProfile, savePlayProfile, saveLogs, resetAll } = useCat();
+  const { user, signOut } = useAuth();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<CatFormValues | null>(null);
   const [savedMsg, setSavedMsg] = useState("");
@@ -176,6 +178,15 @@ export function Settings() {
         >
           <Icon name="close" size={19} />
           Wyczyść dziennik
+        </Button>
+      </section>
+
+      {/* konto */}
+      <section className="flex flex-col gap-2">
+        {user?.email && <p className="text-sm text-ink-soft">Zalogowano jako: {user.email}</p>}
+        <Button variant="secondary" block onClick={() => void signOut()}>
+          <Icon name="arrowRight" size={19} />
+          Wyloguj
         </Button>
       </section>
 

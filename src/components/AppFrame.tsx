@@ -5,7 +5,9 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Icon, type IconName } from "@/components/Icon";
 import { useCat } from "@/context/CatContext";
+import { useAuth } from "@/context/AuthContext";
 import { Onboarding } from "@/screens/Onboarding";
+import { Auth } from "@/screens/Auth";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -37,8 +39,19 @@ function Logo() {
 
 export function AppFrame({ children }: { children: ReactNode }) {
   const { loaded, profile } = useCat();
+  const { loading: authLoading, session } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
+
+  if (authLoading) {
+    return (
+      <div className="grid h-[100dvh] place-items-center text-ink-faint">Wczytuję…</div>
+    );
+  }
+
+  if (!session) {
+    return <Auth />;
+  }
 
   if (!loaded) {
     return (

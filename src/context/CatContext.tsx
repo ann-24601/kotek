@@ -9,7 +9,8 @@ import {
   type ReactNode,
 } from "react";
 import type { CatProfile, DayLog, Pillars, PlayProfile } from "../lib/types";
-import { storage, KEYS } from "../lib/storage";
+import { supabase } from "../lib/supabase";
+import { useAuth } from "./AuthContext";
 
 interface CatState {
   loaded: boolean;
@@ -26,23 +27,86 @@ interface CatState {
 
 const Ctx = createContext<CatState | null>(null);
 
+/* --- mapowanie wierszy day_logs <-> DayLog --- */
+interface DayLogRow {
+  date: string;
+  metrics: DayLog["m"];
+  note: string | null;
+}
+
+function rowToLog(r: DayLogRow): DayLog {
+  return { date: r.date, m: r.metrics ?? {}, note: r.note ?? undefined };
+}
+
 export function CatProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
+
   const [loaded, setLoaded] = useState(false);
   const [profile, setProfile] = useState<CatProfile | null>(null);
   const [pillars, setPillars] = useState<Pillars>({});
   const [playProfile, setPlayProfile] = useState<PlayProfile | null>(null);
   const [logs, setLogs] = useState<DayLog[]>([]);
 
+  // Wczytanie danych użytkownika z Supabase po zalogowaniu; reset po wylogowaniu.
   useEffect(() => {
-    setProfile(storage.get<CatProfile>(KEYS.profile));
-    setPillars(storage.get<Pillars>(KEYS.pillars) || {});
-    setPlayProfile(storage.get<PlayProfile>(KEYS.playProfile));
-    setLogs(storage.get<DayLog[]>(KEYS.logs) || []);
-    setLoaded(true);
-  }, []);
+    let active = true;
 
-  const value = useMemo<CatState>(
-    () => ({
+    if (!userId) {
+      setProfile(null);
+      setPillars({});
+      setPlayProfile(null);
+      setLogs([]);
+      setLoaded(false);
+      return;
+    }
+
+    setLoaded(false);
+    (async () => {
+      const [{ data: prof }, { data: rows }] = await Promise.all([
+        supabase
+          .from("cat_profiles")
+          .select("profile, play_profile, pillars")
+          .eq("user_id", userId)
+          .maybeSingle(),
+        supabase
+          .from("day_logs")
+          .select("date, metrics, note")
+          .eq("user_id", userId)
+          .order("date", { ascending: true }),
+      ]);
+
+      if (!active) return;
+      setProfile((prof?.profile as CatProfile) ?? null);
+      setPlayProfile((prof?.play_profile as PlayProfile) ?? null);
+      setPillars((prof?.pillars as Pillars) ?? {});
+      setLogs(((rows as DayLogRow[] | null) ?? []).map(rowToLog));
+      setLoaded(true);
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [userId]);
+
+  const value = useMemo<CatState>(() => {
+    // Upsert dotykający TYLKO jednej kolumny cat_profiles. Dzięki temu kilka zapisów
+    // pod rząd (np. saveProfile + savePlayProfile w onboardingu) nie kasuje się nawzajem
+    // — każdy aktualizuje swoje pole, a ON CONFLICT zostawia pozostałe kolumny bez zmian.
+    const upsertColumn = (column: "profile" | "play_profile" | "pillars", val: unknown) => {
+      if (!userId) return;
+      void supabase
+        .from("cat_profiles")
+        .upsert(
+          { user_id: userId, [column]: val, updated_at: new Date().toISOString() },
+          { onConflict: "user_id" },
+        )
+        .then(({ error }) => {
+          if (error) console.error("Zapis profilu nie powiódł się:", error.message);
+        });
+    };
+
+    return {
       loaded,
       profile,
       pillars,
@@ -50,33 +114,64 @@ export function CatProvider({ children }: { children: ReactNode }) {
       logs,
       saveProfile: (p) => {
         setProfile(p);
-        storage.set(KEYS.profile, p);
+        upsertColumn("profile", p);
       },
       savePillars: (p) => {
         setPillars(p);
-        storage.set(KEYS.pillars, p);
+        upsertColumn("pillars", p);
       },
       savePlayProfile: (p) => {
         setPlayProfile(p);
-        storage.set(KEYS.playProfile, p);
+        upsertColumn("play_profile", p);
       },
       saveLogs: (l) => {
+        const prev = logs;
         setLogs(l);
-        storage.set(KEYS.logs, l);
+        if (!userId) return;
+
+        // Różnicowy zapis: upsert obecnych dni, delete dni usuniętych z tablicy.
+        const nextDates = new Set(l.map((x) => x.date));
+        const removed = prev.filter((x) => !nextDates.has(x.date)).map((x) => x.date);
+        const now = new Date().toISOString();
+
+        void supabase
+          .from("day_logs")
+          .upsert(
+            l.map((x) => ({
+              user_id: userId,
+              date: x.date,
+              metrics: x.m,
+              note: x.note ?? null,
+              updated_at: now,
+            })),
+            { onConflict: "user_id,date" },
+          )
+          .then(({ error }) => {
+            if (error) console.error("Zapis wpisów nie powiódł się:", error.message);
+          });
+
+        if (removed.length) {
+          void supabase
+            .from("day_logs")
+            .delete()
+            .eq("user_id", userId)
+            .in("date", removed)
+            .then(({ error }) => {
+              if (error) console.error("Usuwanie wpisów nie powiodło się:", error.message);
+            });
+        }
       },
       resetAll: () => {
         setProfile(null);
         setPillars({});
         setPlayProfile(null);
         setLogs([]);
-        storage.remove(KEYS.profile);
-        storage.remove(KEYS.pillars);
-        storage.remove(KEYS.playProfile);
-        storage.remove(KEYS.logs);
+        if (!userId) return;
+        void supabase.from("day_logs").delete().eq("user_id", userId);
+        void supabase.from("cat_profiles").delete().eq("user_id", userId);
       },
-    }),
-    [loaded, profile, pillars, playProfile, logs],
-  );
+    };
+  }, [loaded, profile, pillars, playProfile, logs, userId]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
