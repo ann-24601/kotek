@@ -43,6 +43,11 @@ export function AppFrame({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
 
+  // Dokumentacja API ma własny layout (styl Vercel) i jest publiczna — z pominięciem bramki.
+  if (pathname.startsWith("/docs")) {
+    return <>{children}</>;
+  }
+
   if (authLoading) {
     return (
       <div className="grid h-[100dvh] place-items-center text-ink-faint">Wczytuję…</div>
@@ -86,16 +91,25 @@ export function AppFrame({ children }: { children: ReactNode }) {
             </Link>
           ))}
         </nav>
-        <Link
-          href="/ustawienia"
-          className={cn(
-            "mt-auto flex min-h-11 items-center gap-3 rounded-[var(--r-chip)] border-2 border-transparent px-3.5 py-[11px] font-hand text-[1.1875rem] font-semibold text-ink no-underline hover:border-hairline",
-            isActive(pathname, "/ustawienia") && "border-ink bg-ink text-paper hover:border-ink",
-          )}
-        >
-          <Icon name="settings" size={25} />
-          <span>Ustawienia</span>
-        </Link>
+        <div className="mt-auto flex flex-col gap-2">
+          <Link
+            href="/docs"
+            className="flex min-h-11 items-center gap-3 rounded-[var(--r-chip)] border-2 border-transparent px-3.5 py-[11px] font-hand text-[1.1875rem] font-semibold text-ink no-underline hover:border-hairline"
+          >
+            <Icon name="note" size={25} />
+            <span>Dokumentacja</span>
+          </Link>
+          <Link
+            href="/ustawienia"
+            className={cn(
+              "flex min-h-11 items-center gap-3 rounded-[var(--r-chip)] border-2 border-transparent px-3.5 py-[11px] font-hand text-[1.1875rem] font-semibold text-ink no-underline hover:border-hairline",
+              isActive(pathname, "/ustawienia") && "border-ink bg-ink text-paper hover:border-ink",
+            )}
+          >
+            <Icon name="settings" size={25} />
+            <span>Ustawienia</span>
+          </Link>
+        </div>
       </aside>
 
       {/* Treść */}
@@ -104,13 +118,22 @@ export function AppFrame({ children }: { children: ReactNode }) {
           <div>
             <Logo />
           </div>
-          <button
-            className="inline-flex h-11 w-11 items-center justify-center rounded-[var(--r-box)] border-2 border-ink bg-paper text-ink active:translate-x-[1px] active:translate-y-[1px]"
-            onClick={() => router.push("/ustawienia")}
-            aria-label="Ustawienia"
-          >
-            <Icon name="settings" size={24} />
-          </button>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/docs"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-[var(--r-box)] border-2 border-ink bg-paper text-ink no-underline active:translate-x-[1px] active:translate-y-[1px]"
+              aria-label="Dokumentacja API"
+            >
+              <Icon name="note" size={22} />
+            </Link>
+            <button
+              className="inline-flex h-11 w-11 items-center justify-center rounded-[var(--r-box)] border-2 border-ink bg-paper text-ink active:translate-x-[1px] active:translate-y-[1px]"
+              onClick={() => router.push("/ustawienia")}
+              aria-label="Ustawienia"
+            >
+              <Icon name="settings" size={24} />
+            </button>
+          </div>
         </header>
 
         <main className="min-h-0 flex-1 overflow-y-auto" id="tresc">

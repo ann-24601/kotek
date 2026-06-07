@@ -19,6 +19,8 @@ export interface BehavioristContext {
   playProfile: PlayProfile | null;
   pillars: Pillars;
   logs: DayLog[];
+  /** Opcjonalny dzień do wyróżnienia jako główny kontekst pytania (YYYY-MM-DD). */
+  focusDate?: string;
 }
 
 /* notatki są HTML (TipTap) — czyścimy do czystego tekstu, jak lista w Statystykach */
@@ -149,6 +151,30 @@ TREŚĆ:
 - NIE jesteś weterynarzem i nie diagnozujesz chorób. Gdy widzisz czerwoną flagę zdrowotną (np. apetyt "Mniej"/brak jedzenia, nagłe duże zmiany w aktywności, ukrywanie się, sygnały bólu) — wyraźnie zalecaj wizytę u weterynarza.
 - Bądź zwięzły: kilka akapitów lub krótka lista kroków. Bez ścian tekstu.`;
 
+/* opisuje pojedynczy wpis (metryki + notatka) lub brak wpisu */
+function describeOneLog(log: DayLog | undefined): string {
+  if (!log) return "Na ten dzień NIE MA jeszcze wpisu w dzienniku.";
+  const metrics = (Object.keys(log.m) as (keyof DayLog["m"])[])
+    .map((k) => metricLabel(k, log.m[k]))
+    .filter(Boolean)
+    .join(", ");
+  const note = log.note ? stripHtml(log.note) : "";
+  const parts: string[] = [];
+  if (metrics) parts.push(metrics);
+  if (note) parts.push(`Notatka: ${note}`);
+  return parts.length ? parts.join(" — ") : "Wpis istnieje, ale bez metryk i notatki.";
+}
+
+function describeFocus(ctx: BehavioristContext): string {
+  if (!ctx.focusDate) return "";
+  const log = ctx.logs.find((l) => l.date === ctx.focusDate);
+  return `
+=== DZIEŃ W CENTRUM UWAGI (${ctx.focusDate}) ===
+Pytanie opiekuna dotyczy przede wszystkim tego dnia — potraktuj go priorytetowo, ale korzystaj też z pełnego kontekstu powyżej.
+${describeOneLog(log)}
+`;
+}
+
 export function buildInstructions(ctx: BehavioristContext): string {
   const catName = ctx.profile?.name ?? "kot";
   return `${PERSONA}
@@ -164,6 +190,6 @@ ${describePillars(ctx.pillars)}
 
 === DZIENNIK — WSZYSTKIE WPISY (od najnowszych) ===
 ${describeLogs(ctx.logs)}
-
+${describeFocus(ctx)}
 Korzystaj z powyższych danych, odpowiadając na pytania opiekuna.`;
 }
