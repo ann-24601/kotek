@@ -39,7 +39,11 @@ export type IconName =
   | "sparkle"
   | "stats"
   | "yarn"
-  | "sort";
+  | "sort"
+  | "refresh"
+  | "note"
+  | "gender"
+  | "scissors";
 
 interface IconProps {
   name: IconName;
@@ -284,6 +288,36 @@ const PATHS: Record<IconName, JSX.Element> = {
       <path d="M5 8 L8 5 L11 8" />
       <path d="M16 5 V19" />
       <path d="M13 16 L16 19 L19 16" />
+    </g>
+  ),
+  refresh: (
+    <g fill="none">
+      <path d="M20 6 C17.5 4 14 3.5 11 5 C6.5 7 5 12.5 7 17" />
+      <path d="M20 3 L20 6.5 L16.5 6.5" />
+      <path d="M4 18 C6.5 20 10 20.5 13 19 C17.5 17 19 11.5 17 7" />
+      <path d="M4 21 L4 17.5 L7.5 17.5" />
+    </g>
+  ),
+  note: (
+    <g fill="none">
+      <path d="M6 3.5 L18 3.5 C18.6 3.5 19 4 19 4.6 L19 20 L5 20 L5 4.6 C5 4 5.4 3.5 6 3.5 Z" />
+      <path d="M8 8 H16 M8 11.5 H16 M8 15 H13" strokeWidth={1.4} />
+    </g>
+  ),
+  gender: (
+    <g fill="none">
+      <circle cx="10.5" cy="13.5" r="4.5" />
+      <path d="M13.7 10.3 L19 5" />
+      <path d="M15 5 L19 5 L19 9" />
+      <path d="M10.5 18 L10.5 22 M8 20 L13 20" />
+    </g>
+  ),
+  scissors: (
+    <g fill="none">
+      <circle cx="6" cy="7" r="2.2" />
+      <circle cx="6" cy="17" r="2.2" />
+      <path d="M7.8 8.2 L20 15.5" />
+      <path d="M7.8 15.8 L20 8.5" />
     </g>
   ),
 };

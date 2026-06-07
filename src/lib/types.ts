@@ -10,6 +10,8 @@ export interface CatProfile {
   /** Awatar wybierany z hand-drawn ikon (klucz ikony). */
   avatar: string;
   sex: Sex;
+  /** Czy kot jest po sterylizacji/kastracji. */
+  neutered: boolean;
   indoor: LifeMode;
   multi: boolean;
   notes?: string;

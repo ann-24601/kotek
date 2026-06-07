@@ -6,33 +6,22 @@ import { Button } from "@/components/ui/button";
 import { ToggleChip } from "@/components/ui/toggle-chip";
 import { NoteEditor } from "@/components/NoteEditor";
 import { useCat } from "@/context/CatContext";
-import { METRICS, PILLARS } from "@/lib/constants";
+import { METRICS } from "@/lib/constants";
+import { rankTips } from "@/lib/tips";
 import { todayStr, fmtLong } from "@/lib/dates";
 import type { DayLog, DayMetrics } from "@/lib/types";
-
-/* --- pula porad (hasło o kotku) ---
-   Faza 1: losowane. Porady o zabawie + tematy środowiskowe (dawne „filary”)
-   pokazują się wymiennie jako jeden tekst pod nagłówkiem.
-   Faza 2: dopasowanie do notatek, logowanej aktywności i statystyk. */
-const PLAY_TIPS = [
-  "Zakończ każdą sesję złapaniem zdobyczy, a zaraz potem posiłkiem — to domyka instynkt łowiecki.",
-  "Zacznij od wodzenia wzrokiem: powoli przeciągaj zabawkę w pewnej odległości. Samo śledzenie oczami to już pierwszy etap polowania.",
-  "Krótkie sesje z dystansu, nigdy nie machaj przy pysku. Pozwól obserwować i podejść samemu — wtedy poczuje się łowcą, nie ofiarą.",
-  "Przeciągaj zabawkę po podłodze i chowaj ją za meble. Koty polujące przy ziemi lubią, gdy „ofiara” ucieka i znika.",
-  "Unoś zabawkę, rób skoki i krótkie pauzy w powietrzu. Dla łowcy powietrznego to cel do namierzenia i ataku.",
-  "Pozwól „złapać” zdobycz co kilka prób — niedokończona sekwencja frustruje. Zakończ sesję sukcesem, a potem posiłkiem.",
-];
 
 export function Today() {
   const { profile, logs, saveLogs } = useCat();
 
   const today = todayStr();
   const existing = logs.find((l) => l.date === today);
-  // losowa porada z puli: zabawa + środowisko
-  const tip = useMemo(() => {
-    const pool = [...PLAY_TIPS, ...PILLARS.map((p) => p.d)];
-    return pool[Math.floor(Math.random() * pool.length)];
-  }, []);
+
+  // porady dopasowane do statystyk zachowań kota; kliknięcie pokazuje kolejną
+  const tips = useMemo(() => rankTips(logs), [logs]);
+  const [tipIdx, setTipIdx] = useState(0);
+  const tip = tips[tipIdx % tips.length]?.text ?? "";
+  const nextTip = () => setTipIdx((i) => i + 1);
 
   const normals = useMemo<DayMetrics>(
     () => Object.fromEntries(METRICS.map((x) => [x.key, x.normal])) as DayMetrics,
@@ -64,22 +53,23 @@ export function Today() {
       {/* hasło o kotku */}
       <header className="flex flex-col gap-2.5">
         <h1 className="text-[1.75rem] leading-tight">Cześć! Jak tam {profile?.name}?</h1>
-        <p className="max-w-[52ch] text-[14px] leading-snug text-ink-soft">{tip}</p>
+        <button
+          type="button"
+          onClick={nextTip}
+          title="Kliknij, aby zobaczyć kolejną poradę"
+          aria-label="Pokaż kolejną poradę"
+          className="group max-w-[52ch] cursor-pointer select-none text-left text-[14px] leading-snug text-ink-soft transition hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        >
+          {tip}
+          <span className="ml-1 inline-flex items-center gap-1 whitespace-nowrap text-[12px] text-ink-soft opacity-60 transition group-hover:opacity-100">
+            <Icon name="refresh" size={14} />
+            kolejna porada
+          </span>
+        </button>
       </header>
 
       {/* zapis dnia (płasko, bez ramki) */}
       <section className="mt-3">
-        {/* notatka / wpis dnia — edytor z paskiem formatowania (Markdown) */}
-        <NoteEditor
-          value={note}
-          onChange={(html) => {
-            setNote(html);
-            setSaved(false);
-          }}
-          placeholder=""
-          ariaLabel="Co dziś zwróciło Twoją uwagę?"
-        />
-
         {/* odhaczanie pól */}
         {METRICS.map((mt) => (
           <fieldset key={mt.key} className="mt-6 min-w-0 border-0 p-0">
@@ -101,6 +91,23 @@ export function Today() {
             </div>
           </fieldset>
         ))}
+
+        {/* notatka / wpis dnia — edytor z paskiem formatowania (Markdown) */}
+        <fieldset className="mt-6 min-w-0 border-0 p-0">
+          <legend className="mb-2 flex items-center gap-2 p-0 font-hand text-lg font-semibold">
+            <Icon name="note" size={28} />
+            Notatka
+          </legend>
+          <NoteEditor
+            value={note}
+            onChange={(html) => {
+              setNote(html);
+              setSaved(false);
+            }}
+            placeholder=""
+            ariaLabel="Co dziś zwróciło Twoją uwagę?"
+          />
+        </fieldset>
 
         <Button block size="lg" onClick={save} className="mt-5">
           <Icon name="check" size={22} />
