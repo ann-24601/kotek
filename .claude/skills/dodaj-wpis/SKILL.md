@@ -9,6 +9,9 @@ Zapisuje pojedynczy wpis dzienny aplikacji **Kotek** do tabeli `day_logs` w Supa
 ustawiając 4 metryki na podstawie tego, co użytkownik opisze słowami, a następnie
 weryfikuje, że wpis trafił do bazy.
 
+Skill działa **wszędzie, gdzie podłączony jest konektor Supabase** — w Claude.ai
+(przeglądarka/aplikacja) i w Claude Code. Nie wymaga lokalnych plików ani sekretów.
+
 ## Kiedy używać
 
 Użytkownik opisuje dzień kota i chce go odnotować, np.:
@@ -16,21 +19,22 @@ Użytkownik opisuje dzień kota i chce go odnotować, np.:
 - „Dodaj wpis na 5 czerwca — apatyczny, nie chciał jeść."
 - „Odnotuj, że dziś prawie nie wstawał i marudził pod drzwiami."
 
-## Autoryzacja
+## Dostęp do bazy
 
-Zapis/odczyt idą przez **REST API Supabase (PostgREST)** kluczem **service_role**
-(omija RLS — dlatego `user_id` podajesz jawnie). Wartości czytaj z `kotek/.env.local`,
-NIE wpisuj kluczy na stałe w komendach ani w odpowiedzi. Wczytaj je do shella przed
-wywołaniami (uruchamiaj z katalogu repo albo użyj ścieżki bezwzględnej do `.env.local`):
+Wszystkie operacje na bazie wykonuj przez **konektor Supabase** (narzędzie typu
+`execute_sql` udostępniane przez konektor Supabase MCP). Konektor sam obsługuje
+autoryzację — **nie potrzebujesz** `service_role`, `.env.local` ani `curl`.
 
-```bash
-set -a; . "kotek/.env.local"; set +a
-BASE="$NEXT_PUBLIC_SUPABASE_URL/rest/v1"
-AUTH=(-H "apikey: $SUPABASE_SERVICE_ROLE_KEY" -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY")
-```
+Stałe projektu Kotek (wpisane na sztywno — apka jest jednoużytkownikowa):
 
-Dane wpisu: tabela `day_logs`, PK `(user_id, date)`; `date` = `YYYY-MM-DD`;
-`metrics` jsonb `{aktywnosc, apetyt, vocal, zabawa}`; `note` = HTML (TipTap), np. `<p>...</p>`.
+- `project_id` = `iythcbjjzwalyftxwswo`
+- `user_id`    = `0ced3e18-9c5e-4b29-8520-445759cc8cb6`
+
+Tabela `day_logs`: PK `(user_id, date)`; `date` = `DATE` (`YYYY-MM-DD`);
+`metrics` jsonb `{aktywnosc, apetyt, vocal, zabawa}`; `note` = HTML (TipTap), np. `<p>...</p>`, albo `NULL`.
+
+> Jeśli konektor Supabase nie jest dostępny w danej rozmowie, poproś użytkownika,
+> by go podłączył (Ustawienia → Konektory → Supabase), bo bez niego nie da się zapisać wpisu.
 
 ## Skala metryk (wnioskuj wartość z opisu)
 
@@ -54,39 +58,44 @@ ustaw „jak zwykle" (⟵ normal) — podaj komplet 4 wartości.
 
 ## Procedura
 
-1. **Ustal datę.** Domyślnie dziś (`date +%F`). Jeśli użytkownik podał dzień
-   („wczoraj", „5 czerwca") — przelicz na `YYYY-MM-DD`.
-2. **Wczytaj sekrety** (sekcja „Autoryzacja"). `user_id` = `$KOTEK_USER_ID`.
-3. **Wywnioskuj 4 metryki** z opisu wg skali wyżej.
-4. **Zbuduj notatkę** jako HTML akapit z opisem użytkownika, np.
-   `<p>Dużo biegał, jadł normalnie, w nocy miauczał.</p>`. Bez notatki → `null`.
-5. **(Opcjonalnie) sprawdź, czy wpis na ten dzień już istnieje** — by ostrzec o nadpisaniu:
-   ```bash
-   curl -s "${AUTH[@]}" "$BASE/day_logs?user_id=eq.$KOTEK_USER_ID&date=eq.<YYYY-MM-DD>&select=date"
+1. **Ustal datę.** Domyślnie dziś (aktualna data w formacie `YYYY-MM-DD`). Jeśli użytkownik
+   podał dzień („wczoraj", „5 czerwca") — przelicz na `YYYY-MM-DD`.
+2. **Wywnioskuj 4 metryki** z opisu wg skali wyżej.
+3. **Zbuduj notatkę** jako HTML akapit z opisem użytkownika, np.
+   `<p>Dużo biegał, jadł normalnie, w nocy miauczał.</p>`. Bez notatki → `NULL`.
+   W SQL apostrof w treści notatki podwajaj (`'` → `''`).
+4. **(Opcjonalnie) sprawdź, czy wpis na ten dzień już istnieje** — by ostrzec o nadpisaniu.
+   Wywołaj `execute_sql` konektora Supabase z `project_id` = `iythcbjjzwalyftxwswo`:
+   ```sql
+   select date from public.day_logs
+   where user_id = '0ced3e18-9c5e-4b29-8520-445759cc8cb6' and date = '<YYYY-MM-DD>';
    ```
-6. **Zapisz (upsert).** `Prefer: resolution=merge-duplicates` robi upsert po `(user_id,date)`:
-   ```bash
-   curl -s "${AUTH[@]}" \
-     -H "Content-Type: application/json" \
-     -H "Prefer: resolution=merge-duplicates,return=representation" \
-     "$BASE/day_logs?on_conflict=user_id,date" \
-     -d '{
-       "user_id":"'"$KOTEK_USER_ID"'",
-       "date":"<YYYY-MM-DD>",
-       "metrics":{"aktywnosc":<n>,"apetyt":<n>,"vocal":<n>,"zabawa":<n>},
-       "note":"<HTML lub null>"
-     }'
+5. **Zapisz (upsert).** `on conflict (user_id, date)` robi upsert po kluczu głównym.
+   Wywołaj `execute_sql` konektora Supabase z `project_id` = `iythcbjjzwalyftxwswo`:
+   ```sql
+   insert into public.day_logs (user_id, date, metrics, note)
+   values (
+     '0ced3e18-9c5e-4b29-8520-445759cc8cb6',
+     '<YYYY-MM-DD>',
+     '{"aktywnosc":<n>,"apetyt":<n>,"vocal":<n>,"zabawa":<n>}'::jsonb,
+     '<HTML notatki>'        -- albo NULL (bez cudzysłowów)
+   )
+   on conflict (user_id, date) do update
+     set metrics = excluded.metrics,
+         note = excluded.note,
+         updated_at = now()
+   returning date, metrics, note, updated_at;
    ```
-   Jeśli na ten dzień istniał już wpis — poinformuj użytkownika, że został nadpisany.
-7. **Zweryfikuj zapis** — niezależny odczyt z bazy i porównanie z zamiarem:
-   ```bash
-   curl -s "${AUTH[@]}" \
-     "$BASE/day_logs?user_id=eq.$KOTEK_USER_ID&date=eq.<YYYY-MM-DD>&select=date,metrics,note,updated_at"
+   Jeśli na ten dzień istniał już wpis (krok 4) — poinformuj użytkownika, że został nadpisany.
+6. **Zweryfikuj zapis** — niezależny odczyt z bazy i porównanie z zamiarem:
+   ```sql
+   select date, metrics, note, updated_at from public.day_logs
+   where user_id = '0ced3e18-9c5e-4b29-8520-445759cc8cb6' and date = '<YYYY-MM-DD>';
    ```
    Potwierdź, że: (a) zwrócono dokładnie jeden rekord, (b) wszystkie 4 klucze metryk mają
    oczekiwane wartości, (c) `note` zgadza się z zamierzoną. Jeśli coś się nie zgadza albo
-   odpowiedź zawiera błąd/`message` — napraw i zweryfikuj ponownie.
-8. **Podsumuj użytkownikowi** po polsku: datę i ustawione metryki z etykietami słownymi
+   odpowiedź zawiera błąd — napraw i zweryfikuj ponownie.
+7. **Podsumuj użytkownikowi** po polsku: datę i ustawione metryki z etykietami słownymi
    (np. „Aktywność: Dużo, Apetyt: Jak zwykle, Miauczenie: Nocne, Zabawa: Dobra sesja")
    oraz wynik weryfikacji. Jeśli `apetyt = 0` lub inne czerwone flagi — delikatnie zasugeruj
    obserwację / wizytę u weterynarza.
