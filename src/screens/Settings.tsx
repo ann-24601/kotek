@@ -20,7 +20,7 @@ import {
 } from "@/components/CatProfileFields";
 import { useCat } from "@/context/CatContext";
 import { useAuth } from "@/context/AuthContext";
-import { demoLogs } from "@/lib/demo";
+import { demoLogs, mergeLogs } from "@/lib/demo";
 
 function label<T extends string>(list: { v: T; l: string }[], value: T | undefined): string {
   return list.find((x) => x.v === value)?.l ?? "—";
@@ -159,7 +159,7 @@ export function Settings() {
       {/* dane — bez ramki, bez nagłówka */}
       <section className="flex flex-col gap-2">
         <p className="text-sm text-ink-soft">Wpisów w dzienniku: {logs.length}</p>
-        <Button variant="secondary" block onClick={() => saveLogs(demoLogs())}>
+        <Button variant="secondary" block onClick={() => saveLogs(mergeLogs(logs, demoLogs()))}>
           <Icon name="sparkle" size={19} />
           Wczytaj dane demo (21 dni)
         </Button>

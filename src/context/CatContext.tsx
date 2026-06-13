@@ -125,13 +125,13 @@ export function CatProvider({ children }: { children: ReactNode }) {
         upsertColumn("play_profile", p);
       },
       saveLogs: (l) => {
-        const prev = logs;
         setLogs(l);
         if (!userId) return;
 
-        // Różnicowy zapis: upsert obecnych dni, delete dni usuniętych z tablicy.
-        const nextDates = new Set(l.map((x) => x.date));
-        const removed = prev.filter((x) => !nextDates.has(x.date)).map((x) => x.date);
+        // Zapis nieniszczący: tylko upsert przekazanych dni. NIE kasujemy dni spoza
+        // tablicy — wcześniej tak robiliśmy ("zapis różnicowy"), ale wywołania z
+        // częściową listą (loader demo) usuwały wtedy całą resztę historii. Pełne
+        // czyszczenie dziennika jest dostępne osobno przez resetAll (z potwierdzeniem).
         const now = new Date().toISOString();
 
         void supabase
@@ -149,17 +149,6 @@ export function CatProvider({ children }: { children: ReactNode }) {
           .then(({ error }) => {
             if (error) console.error("Zapis wpisów nie powiódł się:", error.message);
           });
-
-        if (removed.length) {
-          void supabase
-            .from("day_logs")
-            .delete()
-            .eq("user_id", userId)
-            .in("date", removed)
-            .then(({ error }) => {
-              if (error) console.error("Usuwanie wpisów nie powiodło się:", error.message);
-            });
-        }
       },
       resetAll: () => {
         setProfile(null);

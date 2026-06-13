@@ -20,3 +20,15 @@ export function demoLogs(): DayLog[] {
   }
   return out;
 }
+
+/**
+ * Scala dane demo z istniejącymi wpisami bez utraty danych: istniejące wpisy
+ * mają pierwszeństwo (demo uzupełnia tylko brakujące dni). Dzięki temu „wczytaj
+ * demo" na koncie z realną historią niczego nie nadpisuje ani nie kasuje.
+ */
+export function mergeLogs(existing: DayLog[], demo: DayLog[]): DayLog[] {
+  const byDate = new Map<string, DayLog>();
+  for (const d of demo) byDate.set(d.date, d);
+  for (const e of existing) byDate.set(e.date, e);
+  return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
