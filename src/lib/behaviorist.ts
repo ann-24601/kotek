@@ -7,12 +7,26 @@
    ============================================================= */
 
 import { METRICS, PILLARS } from "./constants";
+import { stripHtml } from "./html";
 import type {
   CatProfile,
   DayLog,
+  DayMetrics,
   Pillars,
   PlayProfile,
 } from "./types";
+
+/**
+ * Wpis pobrany z wyszukiwania hybrydowego dla bieżącego pytania.
+ * Strukturalnie zgodny z HybridSearchHit (server/search), ale zdefiniowany
+ * lokalnie, żeby ten moduł nie wciągał kodu serwerowego.
+ */
+export interface RetrievedEntry {
+  date: string;
+  /** Notatka jako czysty tekst (HTML już oczyszczony przez hybridSearch). */
+  note: string;
+  metrics: DayMetrics;
+}
 
 export interface BehavioristContext {
   profile: CatProfile | null;
@@ -21,15 +35,6 @@ export interface BehavioristContext {
   logs: DayLog[];
   /** Opcjonalny dzień do wyróżnienia jako główny kontekst pytania (YYYY-MM-DD). */
   focusDate?: string;
-}
-
-/* notatki są HTML (TipTap) — czyścimy do czystego tekstu, jak lista w Statystykach */
-function stripHtml(html: string): string {
-  return html
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
 }
 
 const SEX_LABEL: Record<CatProfile["sex"], string> = {
@@ -165,6 +170,35 @@ function describeOneLog(log: DayLog | undefined): string {
   return parts.length ? parts.join(" — ") : "Wpis istnieje, ale bez metryk i notatki.";
 }
 
+/* opisuje wpisy pobrane wyszukiwaniem hybrydowym dla bieżącego pytania */
+function describeRetrieved(entries: RetrievedEntry[]): string {
+  if (!entries.length) {
+    return `
+=== NAJTRAFNIEJSZE WPISY (wyszukiwanie hybrydowe) ===
+Wyszukiwanie nie zwróciło wpisów pasujących do tego pytania. Oprzyj odpowiedź na pełnym dzienniku powyżej, a jeśli brakuje danych — powiedz to wprost.
+`;
+  }
+  const body = entries
+    .map((e) => {
+      const metrics = (Object.keys(e.metrics) as (keyof DayMetrics)[])
+        .map((k) => metricLabel(k, e.metrics[k]))
+        .filter(Boolean)
+        .join(", ");
+      const note = e.note ? stripHtml(e.note) : "";
+      const parts = [`[${e.date}]`];
+      if (metrics) parts.push(metrics);
+      if (note) parts.push(`Notatka: ${note}`);
+      return parts.join(" — ");
+    })
+    .join("\n");
+  return `
+=== NAJTRAFNIEJSZE WPISY (wyszukiwanie hybrydowe dla tego pytania) ===
+To wpisy wybrane automatycznie jako najbardziej pasujące do ostatniego pytania opiekuna (znaczenie + słowa kluczowe), uszeregowane od najtrafniejszych.
+Oprzyj odpowiedź PRZEDE WSZYSTKIM na tych wpisach — cytuj konkretne daty, metryki i obserwacje. Pełny dziennik powyżej traktuj jako tło. Jeśli te wpisy nie wystarczają, możesz doszukać dodatkowych narzędziem search_diary.
+${body}
+`;
+}
+
 function describeFocus(ctx: BehavioristContext): string {
   if (!ctx.focusDate) return "";
   const log = ctx.logs.find((l) => l.date === ctx.focusDate);
@@ -175,8 +209,12 @@ ${describeOneLog(log)}
 `;
 }
 
-export function buildInstructions(ctx: BehavioristContext): string {
+export function buildInstructions(
+  ctx: BehavioristContext,
+  retrieved?: RetrievedEntry[],
+): string {
   const catName = ctx.profile?.name ?? "kot";
+  const retrievedBlock = retrieved ? describeRetrieved(retrieved) : "";
   return `${PERSONA}
 
 === PROFIL KOTA (${catName}) ===
@@ -190,6 +228,6 @@ ${describePillars(ctx.pillars)}
 
 === DZIENNIK — WSZYSTKIE WPISY (od najnowszych) ===
 ${describeLogs(ctx.logs)}
-${describeFocus(ctx)}
+${describeFocus(ctx)}${retrievedBlock}
 Korzystaj z powyższych danych, odpowiadając na pytania opiekuna.`;
 }

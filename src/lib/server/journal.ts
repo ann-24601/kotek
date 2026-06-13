@@ -5,6 +5,8 @@
    ============================================================= */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { BehavioristContext } from "@/lib/behaviorist";
+import { stripHtml } from "@/lib/html";
+import { embed, toVectorLiteral } from "./embeddings";
 import type {
   CatProfile,
   ChatMessage,
@@ -52,7 +54,34 @@ export async function upsertEntry(
     .select("date, metrics, note, updated_at")
     .single();
   if (error) throw error;
+
+  // Indeksowanie wektorowe notatki (best-effort): nie może blokować zapisu.
+  // Brakujące/nieudane embeddingi domyka skrypt backfill.
+  await embedEntryNote(sb, userId, date, note).catch((err) =>
+    console.error("upsertEntry embedding error:", err),
+  );
+
   return data as EntryRow;
+}
+
+/**
+ * Generuje i zapisuje embedding notatki wpisu (osobny update).
+ * Puste/wyczyszczone notatki -> embedding NULL (wpis znika z ramienia wektorowego).
+ */
+async function embedEntryNote(
+  sb: SupabaseClient,
+  userId: string,
+  date: string,
+  note: string | null,
+): Promise<void> {
+  const text = note ? stripHtml(note) : "";
+  const embedding = text ? toVectorLiteral(await embed(text)) : null;
+  const { error } = await sb
+    .from("day_logs")
+    .update({ embedding })
+    .eq("user_id", userId)
+    .eq("date", date);
+  if (error) throw error;
 }
 
 interface ProfileRow {

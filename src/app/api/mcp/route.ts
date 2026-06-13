@@ -1,7 +1,8 @@
 /* =============================================================
    Kotek — Remote HTTP MCP server (Streamable HTTP).
    Wystawia dziennik kota agentom AI jako narzędzia MCP:
-   add_entry (upsert wpisu) i get_entry (odczyt).
+   add_entry (upsert wpisu), get_entry (odczyt) i search_entries
+   (wyszukiwanie hybrydowe: wektor + keyword, RRF).
    Pakiet: mcp-handler (wzorzec Vercela). Autoryzacja tym samym
    Bearer tokenem co API v1 (KOTEK_API_TOKEN) przez withMcpAuth.
    Reużywa helperów serwerowych z src/lib/server/*.
@@ -13,11 +14,18 @@ import { adminClient, envOrThrow } from "@/lib/server/admin";
 import { checkToken } from "@/lib/server/auth";
 import { validateMetrics } from "@/lib/server/metrics";
 import { getEntry, upsertEntry } from "@/lib/server/journal";
+import { hybridSearch, type MetricFilters } from "@/lib/server/search";
 
 export const runtime = "nodejs";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const today = () => new Date().toISOString().slice(0, 10);
+
+/** Filtr pojedynczej metryki: dolny i/lub górny próg (włącznie). */
+const METRIC_FILTER = z.object({
+  min: z.number().int().optional(),
+  max: z.number().int().optional(),
+});
 
 /** userId właściciela danych (app jednoużytkownikowa). */
 function ownerId(extra?: { authInfo?: AuthInfo }): string {
@@ -92,6 +100,47 @@ const handler = createMcpHandler(
         } catch (err) {
           console.error("mcp get_entry error:", err);
           return fail("Odczyt nieudany.");
+        }
+      },
+    );
+
+    server.tool(
+      "search_entries",
+      "Wyszukaj wpisy dziennika kota pasujące do zapytania (hybrydowo: " +
+        "podobieństwo znaczeniowe + słowa kluczowe, łączone metodą RRF). " +
+        "Zwraca najtrafniejsze wpisy (domyślnie do 30) z datą, notatką i metrykami. " +
+        "Opcjonalnie zawęź po metrykach (min/max): aktywnosc 0–3, apetyt 0–2, vocal 0–5, zabawa 0–2.",
+      {
+        query: z.string().min(1).describe("Czego szukać, np. 'wymioty po jedzeniu'."),
+        filters: z
+          .object({
+            aktywnosc: METRIC_FILTER.optional(),
+            apetyt: METRIC_FILTER.optional(),
+            vocal: METRIC_FILTER.optional(),
+            zabawa: METRIC_FILTER.optional(),
+          })
+          .partial()
+          .optional()
+          .describe("Opcjonalne filtry po metrykach (min/max, włącznie)."),
+        limit: z
+          .number()
+          .int()
+          .min(1)
+          .max(50)
+          .optional()
+          .describe("Maks. liczba wyników. Domyślnie 30."),
+      },
+      async ({ query, filters, limit }, extra) => {
+        try {
+          const hits = await hybridSearch(adminClient(), ownerId(extra), {
+            query,
+            filters: filters as MetricFilters | undefined,
+            limit,
+          });
+          return json({ ok: true, count: hits.length, hits });
+        } catch (err) {
+          console.error("mcp search_entries error:", err);
+          return fail("Wyszukiwanie nieudane.");
         }
       },
     );
