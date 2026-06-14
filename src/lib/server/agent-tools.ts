@@ -2,12 +2,13 @@
    Kotek — narzędzia behawiorysty AI (OpenAI Agents SDK).
    search_diary: wyszukiwanie hybrydowe po wpisach dziennika,
    żeby agent sięgał do trafnych wpisów zamiast całej historii.
-   Reużywa hybridSearch z lib/server/search.ts. App jednouż. —
-   właściciel z KOTEK_USER_ID (jak MCP/API v1).
+   Reużywa hybridSearch z lib/server/search.ts. Narzędzie tworzone
+   per-żądanie i zawężone do user_id ZALOGOWANEJ osoby (przekazany
+   z trasy po weryfikacji sesji), nigdy do stałego KOTEK_USER_ID.
    ============================================================= */
 import { tool } from "@openai/agents";
 import { z } from "zod";
-import { adminClient, envOrThrow } from "./admin";
+import { adminClient } from "./admin";
 import { hybridSearch, type MetricFilters } from "./search";
 
 const METRIC_FILTER = z
@@ -17,8 +18,9 @@ const METRIC_FILTER = z
   })
   .nullish();
 
-/** Narzędzie wyszukiwania dziennika dla agenta-behawiorysty. */
-export const searchDiaryTool = tool({
+/** Tworzy narzędzie wyszukiwania dziennika zawężone do danego użytkownika. */
+export const makeSearchDiaryTool = (userId: string) =>
+  tool({
   name: "search_diary",
   description:
     "Przeszukaj dziennik kota i znajdź najtrafniejsze wpisy do pytania właściciela " +
@@ -39,7 +41,7 @@ export const searchDiaryTool = tool({
     limit: z.number().int().min(1).max(50).nullish().describe("Maks. wyników (domyślnie 30)."),
   }),
   async execute({ query, filters, limit }) {
-    const hits = await hybridSearch(adminClient(), envOrThrow("KOTEK_USER_ID"), {
+    const hits = await hybridSearch(adminClient(), userId, {
       query,
       filters: (filters ?? undefined) as MetricFilters | undefined,
       limit: limit ?? undefined,
@@ -49,4 +51,4 @@ export const searchDiaryTool = tool({
       hits.map((h) => ({ date: h.date, metrics: h.metrics, note: h.note })),
     );
   },
-});
+  });

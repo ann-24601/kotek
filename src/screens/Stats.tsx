@@ -4,10 +4,12 @@ import { useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { Button } from "@/components/ui/button";
 import { ToggleChip } from "@/components/ui/toggle-chip";
+import { PhotoThumbs } from "@/components/PhotoUploader";
 import { useCat } from "@/context/CatContext";
 import { METRICS, WIN, type Metric } from "@/lib/constants";
 import { fmt, fmtLong, daysAgo } from "@/lib/dates";
 import type { DayLog } from "@/lib/types";
+import { sanitizeNoteHtml } from "@/lib/sanitize";
 import { cn } from "@/lib/utils";
 
 function mode(arr: number[]): number | null {
@@ -201,10 +203,16 @@ function NoteDetail({ log, onClose }: { log: DayLog; onClose: () => void }) {
           </Button>
         </div>
 
+        {log.photos && log.photos.length > 0 && (
+          <div className="mb-4">
+            <PhotoThumbs photos={log.photos} full />
+          </div>
+        )}
+
         {log.note && stripHtml(log.note).length > 0 ? (
           <div
             className="tiptap mb-4 text-base leading-relaxed"
-            dangerouslySetInnerHTML={{ __html: log.note }}
+            dangerouslySetInnerHTML={{ __html: sanitizeNoteHtml(log.note) }}
           />
         ) : (
           <p className="mb-4 text-sm text-ink-soft">Brak treści notatki tego dnia.</p>

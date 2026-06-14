@@ -32,10 +32,16 @@ interface DayLogRow {
   date: string;
   metrics: DayLog["m"];
   note: string | null;
+  photos: string[] | null;
 }
 
 function rowToLog(r: DayLogRow): DayLog {
-  return { date: r.date, m: r.metrics ?? {}, note: r.note ?? undefined };
+  return {
+    date: r.date,
+    m: r.metrics ?? {},
+    note: r.note ?? undefined,
+    photos: r.photos ?? [],
+  };
 }
 
 export function CatProvider({ children }: { children: ReactNode }) {
@@ -71,7 +77,7 @@ export function CatProvider({ children }: { children: ReactNode }) {
           .maybeSingle(),
         supabase
           .from("day_logs")
-          .select("date, metrics, note")
+          .select("date, metrics, note, photos")
           .eq("user_id", userId)
           .order("date", { ascending: true }),
       ]);
@@ -142,6 +148,7 @@ export function CatProvider({ children }: { children: ReactNode }) {
               date: x.date,
               metrics: x.m,
               note: x.note ?? null,
+              photos: x.photos ?? [],
               updated_at: now,
             })),
             { onConflict: "user_id,date" },

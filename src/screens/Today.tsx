@@ -5,7 +5,10 @@ import { Icon } from "@/components/Icon";
 import { Button } from "@/components/ui/button";
 import { ToggleChip } from "@/components/ui/toggle-chip";
 import { NoteEditor } from "@/components/NoteEditor";
+import { PhotoThumbs, PhotoUploader } from "@/components/PhotoUploader";
+import { removeDayPhoto } from "@/lib/photos";
 import { useCat } from "@/context/CatContext";
+import { useAuth } from "@/context/AuthContext";
 import { METRICS } from "@/lib/constants";
 import { rankTips } from "@/lib/tips";
 import { todayStr, fmtLong } from "@/lib/dates";
@@ -13,6 +16,7 @@ import type { DayLog, DayMetrics } from "@/lib/types";
 
 export function Today() {
   const { profile, logs, saveLogs } = useCat();
+  const { user } = useAuth();
 
   const today = todayStr();
   const existing = logs.find((l) => l.date === today);
@@ -32,6 +36,7 @@ export function Today() {
     existing?.m && Object.keys(existing.m).length ? existing.m : normals,
   );
   const [note, setNote] = useState(existing?.note ?? "");
+  const [photos, setPhotos] = useState<string[]>(existing?.photos ?? []);
   const [saved, setSaved] = useState(false);
 
   const setMetric = (k: keyof DayMetrics, v: number) => {
@@ -39,8 +44,21 @@ export function Today() {
     setSaved(false);
   };
 
+  const addPhotos = (paths: string[]) => {
+    setPhotos((p) => [...p, ...paths]);
+    setSaved(false);
+  };
+
+  const removePhoto = (path: string) => {
+    setPhotos((p) => p.filter((x) => x !== path));
+    setSaved(false);
+    void removeDayPhoto(path).catch((err) =>
+      console.error("Usunięcie zdjęcia nie powiodło się:", err),
+    );
+  };
+
   const save = () => {
-    const entry: DayLog = { date: today, m, note };
+    const entry: DayLog = { date: today, m, note, photos };
     saveLogs([...logs.filter((l) => l.date !== today), entry]);
     setSaved(true);
   };
@@ -92,6 +110,13 @@ export function Today() {
           </fieldset>
         ))}
 
+        {/* zdjęcia dnia — nad treścią wpisu */}
+        {photos.length > 0 && (
+          <div className="mt-6">
+            <PhotoThumbs photos={photos} onRemove={removePhoto} />
+          </div>
+        )}
+
         {/* notatka / wpis dnia — edytor z paskiem formatowania (Markdown) */}
         <fieldset className="mt-6 min-w-0 border-0 p-0">
           <legend className="mb-2 flex items-center gap-2 p-0 font-hand text-lg font-semibold">
@@ -108,6 +133,13 @@ export function Today() {
             ariaLabel="Co dziś zwróciło Twoją uwagę?"
           />
         </fieldset>
+
+        {/* dodawanie zdjęć — na samym dole karty */}
+        {user && (
+          <div className="mt-5">
+            <PhotoUploader userId={user.id} date={today} onAdd={addPhotos} />
+          </div>
+        )}
 
         <Button block size="lg" onClick={save} className="mt-5">
           <Icon name="check" size={22} />

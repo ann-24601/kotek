@@ -46,6 +46,8 @@ export interface DayLog {
   date: string; // YYYY-MM-DD
   m: DayMetrics;
   note?: string;
+  /** Ścieżki (klucze) zdjęć w buckecie Storage `day-photos`. */
+  photos?: string[];
 }
 
 export interface ChatMessage {

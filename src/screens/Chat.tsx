@@ -3,12 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { Markdown } from "@/components/Markdown";
+import { useAuth } from "@/context/AuthContext";
 import { useCat } from "@/context/CatContext";
 import type { ChatMessage } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export function Chat() {
   const { profile, playProfile, pillars, logs } = useCat();
+  const { session } = useAuth();
   const name = profile?.name ?? "kota";
 
   const [msgs, setMsgs] = useState<ChatMessage[]>([]);
@@ -37,7 +39,12 @@ export function Chat() {
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token
+            ? { Authorization: `Bearer ${session.access_token}` }
+            : {}),
+        },
         body: JSON.stringify({
           messages: nextMsgs,
           context: { profile, playProfile, pillars, logs },

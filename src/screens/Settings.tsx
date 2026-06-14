@@ -21,6 +21,7 @@ import {
 import { useCat } from "@/context/CatContext";
 import { useAuth } from "@/context/AuthContext";
 import { demoLogs, mergeLogs } from "@/lib/demo";
+import { sanitizeNoteHtml } from "@/lib/sanitize";
 
 function label<T extends string>(list: { v: T; l: string }[], value: T | undefined): string {
   return list.find((x) => x.v === value)?.l ?? "—";
@@ -146,7 +147,7 @@ export function Settings() {
           {hasNote ? (
             <div
               className="tiptap text-sm leading-relaxed text-ink"
-              dangerouslySetInnerHTML={{ __html: noteHtml }}
+              dangerouslySetInnerHTML={{ __html: sanitizeNoteHtml(noteHtml) }}
             />
           ) : (
             <p className="text-sm text-ink-faint">Brak notatek — dodasz je przez „Edytuj".</p>

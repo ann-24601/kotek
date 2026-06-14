@@ -11,8 +11,9 @@ import {
   type BehavioristContext,
   type RetrievedEntry,
 } from "@/lib/behaviorist";
-import { searchDiaryTool } from "@/lib/server/agent-tools";
-import { adminClient, envOrThrow } from "@/lib/server/admin";
+import { makeSearchDiaryTool } from "@/lib/server/agent-tools";
+import { adminClient } from "@/lib/server/admin";
+import { requireUser } from "@/lib/server/auth";
 import { hybridSearch } from "@/lib/server/search";
 import type { ChatMessage } from "@/lib/types";
 
@@ -31,11 +32,11 @@ interface ChatRequest {
  * ostatnim pytaniem opiekuna i zwraca najtrafniejsze wpisy. Best-effort —
  * błąd wyszukiwania nie blokuje rozmowy (agent ma pełny dziennik w kontekście).
  */
-async function retrieveRelevant(query: string): Promise<RetrievedEntry[]> {
+async function retrieveRelevant(userId: string, query: string): Promise<RetrievedEntry[]> {
   const q = query.trim();
   if (!q) return [];
   try {
-    const hits = await hybridSearch(adminClient(), envOrThrow("KOTEK_USER_ID"), {
+    const hits = await hybridSearch(adminClient(), userId, {
       query: q,
       limit: RETRIEVAL_LIMIT,
     });
@@ -47,6 +48,9 @@ async function retrieveRelevant(query: string): Promise<RetrievedEntry[]> {
 }
 
 export async function POST(req: Request) {
+  const auth = await requireUser(req);
+  if (auth instanceof Response) return auth;
+
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     return Response.json(
@@ -73,12 +77,12 @@ export async function POST(req: Request) {
     // Wymuszone pre-retrieval: najpierw przeszukaj bazę ostatnim pytaniem
     // opiekuna, dopiero potem agent odpowiada na bazie znalezionych wpisów.
     const lastUser = [...messages].reverse().find((m) => m.role === "user");
-    const retrieved = await retrieveRelevant(lastUser?.content ?? "");
+    const retrieved = await retrieveRelevant(auth.userId, lastUser?.content ?? "");
 
     const agent = new Agent({
       name: "Behawiorysta",
       instructions: buildInstructions(context, retrieved),
-      tools: [searchDiaryTool],
+      tools: [makeSearchDiaryTool(auth.userId)],
     });
 
     const input: AgentInputItem[] = messages.map((m) =>
