@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { Button } from "@/components/ui/button";
 import { ToggleChip } from "@/components/ui/toggle-chip";
+import { Squiggle, HandUnderline } from "@/components/Squiggle";
 import { NoteEditor } from "@/components/NoteEditor";
 import { PhotoThumbs, PhotoUploader } from "@/components/PhotoUploader";
 import { removeDayPhoto } from "@/lib/photos";
@@ -69,28 +70,35 @@ export function Today() {
       <span className="tag self-start">dziś · {fmtLong(today)}</span>
 
       {/* hasło o kotku */}
-      <header className="flex flex-col gap-2.5">
+      <header className="flex flex-col gap-2">
         <h1 className="text-[1.75rem] leading-tight">Cześć! Jak tam {profile?.name}?</h1>
+        <HandUnderline width={150} />
+        {/* porada w „dymku" z krzywą krawędzią */}
         <button
           type="button"
           onClick={nextTip}
           title="Kliknij, aby zobaczyć kolejną poradę"
           aria-label="Pokaż kolejną poradę"
-          className="group max-w-[52ch] cursor-pointer select-none text-left text-[14px] leading-snug text-ink-soft transition hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          className="ink-edge ink-edge--soft group mt-1 max-w-[54ch] cursor-pointer select-none rounded-[var(--r-box-2)] bg-paper-2 px-4 py-3 text-left text-[14px] leading-snug text-ink-soft transition hover:text-ink focus-visible:outline-none"
         >
+          <span className="mb-1 flex items-center gap-1.5 font-hand text-xs font-bold text-ink">
+            <Icon name="sparkle" size={15} />
+            porada dnia
+          </span>
           {tip}
-          <span className="ml-1 inline-flex items-center gap-1 whitespace-nowrap text-[12px] text-ink-soft opacity-60 transition group-hover:opacity-100">
+          <span className="ml-1 inline-flex items-center gap-1 whitespace-nowrap text-[12px] text-ink-faint opacity-70 transition group-hover:opacity-100">
             <Icon name="refresh" size={14} />
-            kolejna porada
+            kolejna
           </span>
         </button>
       </header>
 
       {/* zapis dnia (płasko, bez ramki) */}
       <section className="mt-3">
-        {/* odhaczanie pól */}
-        {METRICS.map((mt) => (
-          <fieldset key={mt.key} className="mt-6 min-w-0 border-0 p-0">
+        {/* odhaczanie pól — sekcje rozdzielone krzywą linią */}
+        {METRICS.map((mt, i) => (
+          <fieldset key={mt.key} className="min-w-0 border-0 p-0 [&:not(:first-child)]:mt-5">
+            {i > 0 && <Squiggle className="mb-5" />}
             <legend className="mb-2 flex items-center gap-2 p-0 font-hand text-lg font-semibold">
               <Icon name={mt.icon} size={28} />
               {mt.label}
@@ -118,7 +126,8 @@ export function Today() {
         )}
 
         {/* notatka / wpis dnia — edytor z paskiem formatowania (Markdown) */}
-        <fieldset className="mt-6 min-w-0 border-0 p-0">
+        <fieldset className="mt-5 min-w-0 border-0 p-0">
+          <Squiggle className="mb-5" />
           <legend className="mb-2 flex items-center gap-2 p-0 font-hand text-lg font-semibold">
             <Icon name="note" size={28} />
             Notatka
@@ -141,10 +150,17 @@ export function Today() {
           </div>
         )}
 
-        <Button block size="lg" onClick={save} className="mt-5">
-          <Icon name="check" size={22} />
-          {saved ? "Zapisano ✓" : "Zapisz dzień"}
-        </Button>
+        {/* CTA — przyklejone na dole, zawsze pod ręką */}
+        <div className="sticky bottom-2 z-20 mt-7 pb-1 pt-4">
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-full h-8 bg-gradient-to-t from-paper to-transparent"
+            aria-hidden="true"
+          />
+          <Button block size="lg" onClick={save}>
+            <Icon name="check" size={22} />
+            {saved ? "Zapisano ✓" : "Zapisz dzień"}
+          </Button>
+        </div>
       </section>
     </div>
   );

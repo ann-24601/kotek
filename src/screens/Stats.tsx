@@ -4,6 +4,8 @@ import { useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { Button } from "@/components/ui/button";
 import { ToggleChip } from "@/components/ui/toggle-chip";
+import { Squiggle, HandUnderline } from "@/components/Squiggle";
+import { CatEmpty } from "@/components/Illustration";
 import { PhotoThumbs } from "@/components/PhotoUploader";
 import { useCat } from "@/context/CatContext";
 import { METRICS, WIN, type Metric } from "@/lib/constants";
@@ -133,6 +135,7 @@ function LineChart({
           strokeWidth={2.2}
           strokeLinejoin="round"
           strokeLinecap="round"
+          className="rough-line"
         />
       )}
       {/* punkty */}
@@ -219,7 +222,8 @@ function NoteDetail({ log, onClose }: { log: DayLog; onClose: () => void }) {
         )}
 
         {/* odhaczone wskaźniki tego dnia */}
-        <div className="flex flex-col gap-2 border-t border-hairline pt-3">
+        <Squiggle className="mb-3" />
+        <div className="flex flex-col gap-2">
           {METRICS.map((mt) => (
             <div key={mt.key} className="flex items-center justify-between gap-3 text-sm">
               <span className="flex items-center gap-1.5 text-ink-soft">
@@ -273,9 +277,10 @@ export function Stats() {
 
   if (logs.length === 0) {
     return (
-      <div className="flex flex-col gap-4 pt-2">
+      <div className="flex flex-col items-center gap-3 pt-10 text-center">
+        <CatEmpty size={150} />
         <h2 className="text-xl">Brak danych</h2>
-        <p className="text-sm text-ink-soft">
+        <p className="max-w-[38ch] text-sm text-ink-soft">
           Zacznij od zakładki „Dziś". Po kilku dniach pojawi się tu przebieg każdego
           wskaźnika.
         </p>
@@ -390,8 +395,9 @@ export function Stats() {
           <p className="text-sm text-ink-soft">Brak notatek. Dodasz je w zakładce „Dziś".</p>
         ) : (
           <ul className="scroll-sketch m-0 flex max-h-[264px] list-none flex-col overflow-y-auto p-0 pr-2.5">
-            {notes.map((l) => (
-              <li key={l.date} className="border-t border-hairline first:border-t-0">
+            {notes.map((l, i) => (
+              <li key={l.date}>
+                {i > 0 && <Squiggle className="opacity-70" />}
                 <button
                   type="button"
                   onClick={() => setOpenDate(l.date)}

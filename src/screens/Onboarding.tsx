@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { Button } from "@/components/ui/button";
+import { CatHero } from "@/components/Illustration";
+import { HandUnderline } from "@/components/Squiggle";
 import {
   ProfileFields,
   PlayFields,
@@ -62,10 +64,11 @@ export function Onboarding() {
             className="flex flex-col items-center gap-3 pt-6 text-center duration-300 ease-out animate-in fade-in slide-in-from-bottom-2"
           >
             <span className="tag">cześć!</span>
-            <div className="sketch-box sketch-box-alt my-2" aria-hidden="true">
-              <Icon name="cat" size={96} strokeWidth={1.6} />
+            <div className="my-1" aria-hidden="true">
+              <CatHero size={208} />
             </div>
-            <h1 className="mb-3 text-[2rem]">Kotek</h1>
+            <h1 className="text-[2.25rem] leading-none">Kotek</h1>
+            <HandUnderline width={140} className="mb-3" />
             <Button block size="lg" onClick={() => setStep(1)}>
               Zaczynamy
               <Icon name="arrowRight" size={22} />

@@ -168,14 +168,16 @@ export function ProfileFields({ v, set }: { v: CatFormValues; set: Patch }) {
           <Icon name="cat" size={20} />
           Imię kota
         </label>
-        <input
-          id="name"
-          className="min-h-11 w-full rounded-[var(--r-box)] border-2 border-ink bg-paper px-3.5 py-3 font-mono text-base text-ink placeholder:text-ink-faint"
-          value={v.name}
-          onChange={(e) => set({ name: e.target.value })}
-          placeholder="np. Mruczek"
-          autoComplete="off"
-        />
+        <div className="ink-edge rounded-[var(--r-box)] bg-paper focus-within:outline focus-within:outline-[2.5px] focus-within:outline-dashed focus-within:outline-ink focus-within:outline-offset-[3px]">
+          <input
+            id="name"
+            className="min-h-11 w-full rounded-[var(--r-box)] bg-transparent px-3.5 py-3 font-mono text-base text-ink placeholder:text-ink-faint focus:outline-none"
+            value={v.name}
+            onChange={(e) => set({ name: e.target.value })}
+            placeholder="np. Mruczek"
+            autoComplete="off"
+          />
+        </div>
       </div>
 
       <fieldset className={fieldCls}>
@@ -188,7 +190,7 @@ export function ProfileFields({ v, set }: { v: CatFormValues; set: Patch }) {
               aria-pressed={v.avatar === a}
               aria-label={`Awatar ${a}`}
               className={cn(
-                "inline-flex rounded-[var(--r-chip)] border-2 border-ink bg-paper p-2",
+                "ink-edge ink-edge--chip inline-flex rounded-[var(--r-chip)] bg-paper p-2",
                 v.avatar === a && "bg-ink text-paper",
               )}
               onClick={() => set({ avatar: a })}

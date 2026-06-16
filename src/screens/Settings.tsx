@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Icon, type IconName } from "@/components/Icon";
 import { Button } from "@/components/ui/button";
+import { Squiggle, HandUnderline } from "@/components/Squiggle";
 import {
   ProfileFields,
   PlayFields,
@@ -29,13 +30,16 @@ function label<T extends string>(list: { v: T; l: string }[], value: T | undefin
 
 function Row({ icon, term, children }: { icon: IconName; term: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-0.5 border-b border-ink/10 py-2.5 last:border-0 sm:flex-row sm:gap-3">
-      <dt className="flex items-center gap-1.5 font-hand text-sm font-semibold text-ink-soft sm:w-52 sm:shrink-0">
-        <Icon name={icon} size={20} />
-        {term}
-      </dt>
-      <dd className="text-sm text-ink sm:pl-0">{children}</dd>
-    </div>
+    <>
+      <div className="flex flex-col gap-0.5 py-2.5 sm:flex-row sm:gap-3">
+        <dt className="flex items-center gap-1.5 font-hand text-sm font-semibold text-ink-soft sm:w-52 sm:shrink-0">
+          <Icon name={icon} size={20} />
+          {term}
+        </dt>
+        <dd className="text-sm text-ink sm:pl-0">{children}</dd>
+      </div>
+      <Squiggle className="opacity-70" />
+    </>
   );
 }
 
@@ -71,6 +75,7 @@ export function Settings() {
         <header>
           <span className="tag">edycja profilu</span>
           <h1 className="mt-3 text-2xl">Edytuj {profile.name}</h1>
+          <HandUnderline width={120} className="mb-1 mt-1.5" />
           <p className="text-sm text-ink-soft">Zmień dane wprowadzone podczas powitania.</p>
         </header>
 
@@ -108,7 +113,7 @@ export function Settings() {
 
       {/* podsumowanie danych z onboardingu (bez ramki) */}
       <section className="flex flex-col">
-        <dl className="flex flex-col">
+        <dl className="flex flex-col [&>svg:last-child]:hidden">
           <Row icon={FIELD_ICONS.sex} term="Płeć">
             {sexLabel(profile.sex)}
           </Row>

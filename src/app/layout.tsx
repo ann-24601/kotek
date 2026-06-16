@@ -1,8 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import { Shantell_Sans, IBM_Plex_Mono } from "next/font/google";
+import { Shantell_Sans, Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { AppFrame } from "@/components/AppFrame";
+import { RoughDefs } from "@/components/RoughDefs";
 
 const shantell = Shantell_Sans({
   subsets: ["latin-ext"],
@@ -10,10 +11,9 @@ const shantell = Shantell_Sans({
   display: "swap",
 });
 
-const plex = IBM_Plex_Mono({
+const inter = Inter({
   subsets: ["latin-ext"],
-  weight: ["400", "500", "600"],
-  variable: "--font-plex",
+  variable: "--font-inter",
   display: "swap",
 });
 
@@ -32,11 +32,12 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pl" className={`${shantell.variable} ${plex.variable}`}>
+    <html lang="pl" className={`${shantell.variable} ${inter.variable}`}>
       <body>
         <a href="#tresc" className="sr-only">
           Przejdź do treści
         </a>
+        <RoughDefs />
         <Providers>
           <AppFrame>{children}</AppFrame>
         </Providers>

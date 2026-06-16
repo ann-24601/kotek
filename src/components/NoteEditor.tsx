@@ -149,13 +149,13 @@ export function NoteEditor({
   return (
     <div
       className={cn(
-        "w-full overflow-hidden rounded-[var(--r-box)] text-[14px] text-ink",
+        "ink-edge ink-edge--front w-full rounded-[var(--r-box)] text-[14px] text-ink",
         "focus-within:outline focus-within:outline-[2.5px] focus-within:outline-dashed focus-within:outline-ink focus-within:outline-offset-[3px]",
         className,
       )}
     >
       {editor && <Toolbar editor={editor} />}
-      <div className="dotted relative px-3.5 py-3 [&_.tiptap]:min-h-[84px]">
+      <div className="dotted relative rounded-b-[16px] px-3.5 py-3 [&_.tiptap]:min-h-[84px]">
         {editor && editor.isEmpty && (
           <span className="pointer-events-none absolute left-3.5 top-3 text-ink-faint">
             {placeholder}

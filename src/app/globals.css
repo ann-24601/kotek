@@ -18,11 +18,11 @@
   --danger: #b4231a;
   --danger-bg: #fdeceb;
   --focus: #111111;
-  --dot: #c9c9c4;
+  --dot: #ececea;
 
-  /* fonty wstrzykuje next/font przez --font-shantell / --font-plex */
+  /* fonty: nagłówki odręczne (Shantell), treść Inter */
   --font-hand: var(--font-shantell), "Comic Sans MS", cursive;
-  --font-mono: var(--font-plex), ui-monospace, Menlo, monospace;
+  --font-mono: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
 
   /* nieregularne „odręczne" zaokrąglenia */
   --r-box: 14px 22px 16px 20px / 20px 14px 22px 16px;
@@ -32,6 +32,10 @@
   --content-max: 720px;
   --sidebar-w: 248px;
   --tap: 44px;
+
+  /* cienie: sygnaturowy „naklejkowy" offset + miękki (karty, jak w Calm) */
+  --shadow-sticker: 3px 3px 0 var(--ink);
+  --shadow-soft: 0 10px 24px -12px rgba(17, 17, 17, 0.22);
 }
 
 @layer base {
@@ -66,12 +70,63 @@
 }
 
 @layer components {
-  /* „pudełko" z nieregularnym konturem */
+  /* =========================================================
+     Krzywa, „odręczna" krawędź — rysowana na warstwie ::before,
+     by filtr url(#rough) zniekształcał TYLKO kontur, nie tekst.
+     Treść elementu (dzieci) pozostaje idealnie ostra.
+     ========================================================= */
+  .ink-edge {
+    position: relative;
+  }
+  .ink-edge > * {
+    position: relative;
+    z-index: 1;
+  }
+  .ink-edge::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border: var(--stroke) solid var(--edge, var(--ink));
+    border-radius: var(--r-box);
+    filter: url(#rough);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .ink-edge--soft::before {
+    border-radius: var(--r-box-2);
+  }
+  .ink-edge--chip::before {
+    border-radius: var(--r-chip);
+  }
+  /* wariant „pełny" (atramentowe tło) — krawędź zlewa się z wypełnieniem */
+  .ink-edge--filled::before {
+    border-color: var(--ink);
+  }
+  /* krawędź NAD treścią — gdy dziecko ma własne tło (np. notatka z kropkami) */
+  .ink-edge--front::before {
+    z-index: 2;
+  }
+
+  /* „pudełko" z nieregularnym, krzywym konturem */
   .sketch-box {
+    position: relative;
     background: var(--paper);
-    border: var(--stroke) solid var(--ink);
     border-radius: var(--r-box);
     padding: 16px;
+  }
+  .sketch-box > * {
+    position: relative;
+    z-index: 1;
+  }
+  .sketch-box::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border: var(--stroke) solid var(--ink);
+    border-radius: inherit;
+    filter: url(#rough);
+    pointer-events: none;
+    z-index: 0;
   }
   .sketch-box-alt {
     border-radius: var(--r-box-2);
@@ -97,12 +152,20 @@
     border: var(--stroke) solid var(--ink);
   }
 
+  /* cienie pomocnicze (do użycia inline przez utility/komponenty) */
+  .shadow-sticker {
+    box-shadow: var(--shadow-sticker);
+  }
+  .shadow-soft {
+    box-shadow: var(--shadow-soft);
+  }
+
   /* tło wykropkowane (notatki) */
   .dotted {
     background-color: var(--paper);
-    background-image: radial-gradient(var(--dot) 1.3px, transparent 1.3px);
-    background-size: 14px 14px;
-    background-position: 8px 10px;
+    background-image: radial-gradient(var(--dot) 1px, transparent 1px);
+    background-size: 18px 18px;
+    background-position: 9px 11px;
   }
 }
 
@@ -131,6 +194,13 @@
     background: var(--ink-faint);
     border-radius: 999px;
   }
+  /* odręczne zniekształcenie dla ilustracji i krzywych linii (na SVG) */
+  .rough-fx {
+    filter: url(#rough-strong);
+  }
+  .rough-line {
+    filter: url(#rough-line);
+  }
   .sr-only {
     position: absolute;
     width: 1px;
@@ -150,6 +220,15 @@
   *::after {
     animation-duration: 0.001ms !important;
     transition-duration: 0.001ms !important;
+  }
+}
+
+/* Tryb wysokiego kontrastu / druk: wyłącz „drżenie", utrzymaj ostre, czytelne krawędzie */
+@media (forced-colors: active), print {
+  .ink-edge::before,
+  .sketch-box::before,
+  .rough-fx {
+    filter: none !important;
   }
 }
 

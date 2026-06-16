@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Icon } from "@/components/Icon";
 import { Button } from "@/components/ui/button";
+import { HandUnderline } from "@/components/Squiggle";
 import { useAuth } from "@/context/AuthContext";
 
 type Mode = "signin" | "signup";
@@ -50,8 +51,9 @@ export function Auth() {
           <div className="sketch-box sketch-box-alt my-2" aria-hidden="true">
             <Icon name="cat" size={88} strokeWidth={1.6} />
           </div>
-          <h1 className="text-[2rem]">Kotek</h1>
-          <p className="max-w-[34ch] text-sm text-ink-soft">
+          <h1 className="text-[2.25rem] leading-none">Kotek</h1>
+          <HandUnderline width={132} />
+          <p className="mt-1 max-w-[34ch] text-sm text-ink-soft">
             {isSignup
               ? "Załóż konto, aby zapisywać wpisy o swoim kocie."
               : "Zaloguj się, aby wrócić do dziennika kota."}
@@ -61,29 +63,33 @@ export function Auth() {
         <form onSubmit={submit} className="mt-7 flex flex-col gap-3">
           <label className="flex flex-col gap-1.5">
             <span className="font-hand text-sm font-semibold text-ink-soft">E-mail</span>
-            <input
-              type="email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="min-h-11 w-full rounded-[var(--r-box)] border-2 border-ink bg-paper px-3.5 py-3 font-mono text-base text-ink placeholder:text-ink-faint"
-              placeholder="kot@example.com"
-            />
+            <div className="ink-edge rounded-[var(--r-box)] bg-paper focus-within:outline focus-within:outline-[2.5px] focus-within:outline-dashed focus-within:outline-ink focus-within:outline-offset-[3px]">
+              <input
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="min-h-11 w-full rounded-[var(--r-box)] bg-transparent px-3.5 py-3 font-mono text-base text-ink placeholder:text-ink-faint focus:outline-none"
+                placeholder="kot@example.com"
+              />
+            </div>
           </label>
 
           <label className="flex flex-col gap-1.5">
             <span className="font-hand text-sm font-semibold text-ink-soft">Hasło</span>
-            <input
-              type="password"
-              autoComplete={isSignup ? "new-password" : "current-password"}
-              required
-              minLength={6}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="min-h-11 w-full rounded-[var(--r-box)] border-2 border-ink bg-paper px-3.5 py-3 font-mono text-base text-ink placeholder:text-ink-faint"
-              placeholder="min. 6 znaków"
-            />
+            <div className="ink-edge rounded-[var(--r-box)] bg-paper focus-within:outline focus-within:outline-[2.5px] focus-within:outline-dashed focus-within:outline-ink focus-within:outline-offset-[3px]">
+              <input
+                type="password"
+                autoComplete={isSignup ? "new-password" : "current-password"}
+                required
+                minLength={6}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="min-h-11 w-full rounded-[var(--r-box)] bg-transparent px-3.5 py-3 font-mono text-base text-ink placeholder:text-ink-faint focus:outline-none"
+                placeholder="min. 6 znaków"
+              />
+            </div>
           </label>
 
           {error && <p className="text-sm text-danger">{error}</p>}
