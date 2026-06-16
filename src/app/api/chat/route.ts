@@ -8,9 +8,11 @@
 import { Agent, run, setDefaultOpenAIKey, type AgentInputItem } from "@openai/agents";
 import {
   buildInstructions,
+  PERSONAS,
   type BehavioristContext,
   type RetrievedEntry,
 } from "@/lib/behaviorist";
+import { FREE_AGENT_ID, getAgent } from "@/lib/agents/registry";
 import { makeSearchDiaryTool } from "@/lib/server/agent-tools";
 import { adminClient } from "@/lib/server/admin";
 import { requireUser } from "@/lib/server/auth";
@@ -25,6 +27,27 @@ const RETRIEVAL_LIMIT = 8;
 interface ChatRequest {
   messages: ChatMessage[];
   context: BehavioristContext;
+  /** Id wybranego agenta z rejestru. Domyślnie darmowy. */
+  agentId?: string;
+}
+
+/**
+ * Serwerowa bramka dostępu: czy user faktycznie kupił danego płatnego agenta.
+ * To prawdziwa kontrola — blokada w UI jest tylko kosmetyczna. Czyta entitlements
+ * kluczem service_role (zapis tam możliwy wyłącznie z webhooka Stripe).
+ */
+async function userOwnsAgent(userId: string, agentId: string): Promise<boolean> {
+  const { data, error } = await adminClient()
+    .from("entitlements")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("agent_id", agentId)
+    .maybeSingle();
+  if (error) {
+    console.error("Sprawdzenie uprawnienia nie powiodło się:", error);
+    return false;
+  }
+  return Boolean(data);
 }
 
 /**
@@ -71,6 +94,16 @@ export async function POST(req: Request) {
     return Response.json({ error: "Brak wiadomości." }, { status: 400 });
   }
 
+  // Wybór agenta: nieznane id → darmowy. Płatny → wymaga zakupu (entitlements).
+  const agentDef = getAgent(body.agentId ?? FREE_AGENT_ID) ?? getAgent(FREE_AGENT_ID)!;
+  if (agentDef.tier === "paid" && !(await userOwnsAgent(auth.userId, agentDef.id))) {
+    return Response.json(
+      { error: "Ten agent jest zablokowany — wymaga zakupu." },
+      { status: 403 },
+    );
+  }
+  const persona = PERSONAS[agentDef.id] ?? PERSONAS[FREE_AGENT_ID];
+
   try {
     setDefaultOpenAIKey(apiKey);
 
@@ -80,8 +113,8 @@ export async function POST(req: Request) {
     const retrieved = await retrieveRelevant(auth.userId, lastUser?.content ?? "");
 
     const agent = new Agent({
-      name: "Behawiorysta",
-      instructions: buildInstructions(context, retrieved),
+      name: agentDef.name,
+      instructions: buildInstructions(context, retrieved, persona),
       tools: [makeSearchDiaryTool(auth.userId)],
     });
 

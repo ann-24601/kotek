@@ -43,7 +43,8 @@ export type IconName =
   | "refresh"
   | "note"
   | "gender"
-  | "scissors";
+  | "scissors"
+  | "agents";
 
 interface IconProps {
   name: IconName;
@@ -318,6 +319,17 @@ const PATHS: Record<IconName, JSX.Element> = {
       <circle cx="6" cy="17" r="2.2" />
       <path d="M7.8 8.2 L20 15.5" />
       <path d="M7.8 15.8 L20 8.5" />
+    </g>
+  ),
+  // twarz w okularach — wybór agenta / galeria
+  agents: (
+    <g fill="none">
+      <path d="M12 3 C7 3 4 6.5 4 11 C4 16 7.5 20 12 20 C16.5 20 20 16 20 11 C20 6.5 17 3 12 3 Z" />
+      <circle cx="8.6" cy="11" r="2.3" />
+      <circle cx="15.4" cy="11" r="2.3" />
+      <path d="M10.9 10.6 q1.1 -0.6 2.2 0" strokeWidth={1.4} />
+      <path d="M6.3 11 L4.3 11 M17.7 11 L19.7 11" strokeWidth={1.4} />
+      <path d="M9 15.4 q3 2 6 0" />
     </g>
   ),
 };

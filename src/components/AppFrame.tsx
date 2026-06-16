@@ -4,6 +4,8 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Icon, type IconName } from "@/components/Icon";
+import { AgentSwitcher } from "@/components/AgentSwitcher";
+import { Squiggle } from "@/components/Squiggle";
 import { useCat } from "@/context/CatContext";
 import { useAuth } from "@/context/AuthContext";
 import { Onboarding } from "@/screens/Onboarding";
@@ -83,7 +85,7 @@ export function AppFrame({ children }: { children: ReactNode }) {
               href={item.href}
               className={cn(
                 "flex min-h-11 items-center gap-3 rounded-[var(--r-chip)] border-2 border-transparent px-3.5 py-[11px] font-hand text-[1.1875rem] font-semibold text-ink no-underline hover:border-hairline",
-                isActive(pathname, item.href) && "border-ink bg-ink text-paper hover:border-ink",
+                isActive(pathname, item.href) && "ink-edge ink-edge--chip bg-ink text-paper",
               )}
             >
               <Icon name={item.icon} size={25} />
@@ -92,6 +94,16 @@ export function AppFrame({ children }: { children: ReactNode }) {
           ))}
         </nav>
         <div className="mt-auto flex flex-col gap-2">
+          <Link
+            href="/agenci"
+            className={cn(
+              "flex min-h-11 items-center gap-3 rounded-[var(--r-chip)] border-2 border-transparent px-3.5 py-[11px] font-hand text-[1.1875rem] font-semibold text-ink no-underline hover:border-hairline",
+              isActive(pathname, "/agenci") && "ink-edge ink-edge--chip bg-ink text-paper",
+            )}
+          >
+            <Icon name="agents" size={25} />
+            <span>Agenci</span>
+          </Link>
           <Link
             href="/docs"
             className="flex min-h-11 items-center gap-3 rounded-[var(--r-chip)] border-2 border-transparent px-3.5 py-[11px] font-hand text-[1.1875rem] font-semibold text-ink no-underline hover:border-hairline"
@@ -103,7 +115,7 @@ export function AppFrame({ children }: { children: ReactNode }) {
             href="/ustawienia"
             className={cn(
               "flex min-h-11 items-center gap-3 rounded-[var(--r-chip)] border-2 border-transparent px-3.5 py-[11px] font-hand text-[1.1875rem] font-semibold text-ink no-underline hover:border-hairline",
-              isActive(pathname, "/ustawienia") && "border-ink bg-ink text-paper hover:border-ink",
+              isActive(pathname, "/ustawienia") && "ink-edge ink-edge--chip bg-ink text-paper",
             )}
           >
             <Icon name="settings" size={25} />
@@ -114,25 +126,27 @@ export function AppFrame({ children }: { children: ReactNode }) {
 
       {/* Treść */}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <header className="flex shrink-0 items-center justify-between gap-2 border-b-2 border-ink px-4 py-3 lg:hidden">
+        <header className="relative flex shrink-0 items-center justify-between gap-2 px-4 py-3 lg:hidden">
+          <Squiggle tone="ink" strokeWidth={2.2} className="absolute inset-x-0 bottom-0" />
           <div>
             <Logo />
           </div>
           <div className="flex items-center gap-2">
             <Link
               href="/docs"
-              className="inline-flex h-11 w-11 items-center justify-center rounded-[var(--r-box)] border-2 border-ink bg-paper text-ink no-underline active:translate-x-[1px] active:translate-y-[1px]"
+              className="inline-flex h-11 w-11 items-center justify-center ink-edge rounded-[var(--r-box)] bg-paper text-ink no-underline active:translate-x-[1px] active:translate-y-[1px]"
               aria-label="Dokumentacja API"
             >
               <Icon name="note" size={22} />
             </Link>
             <button
-              className="inline-flex h-11 w-11 items-center justify-center rounded-[var(--r-box)] border-2 border-ink bg-paper text-ink active:translate-x-[1px] active:translate-y-[1px]"
+              className="inline-flex h-11 w-11 items-center justify-center ink-edge rounded-[var(--r-box)] bg-paper text-ink active:translate-x-[1px] active:translate-y-[1px]"
               onClick={() => router.push("/ustawienia")}
               aria-label="Ustawienia"
             >
               <Icon name="settings" size={24} />
             </button>
+            <AgentSwitcher />
           </div>
         </header>
 
@@ -144,9 +158,10 @@ export function AppFrame({ children }: { children: ReactNode }) {
 
         {/* Dolna nawigacja — mobile */}
         <nav
-          className="flex shrink-0 border-t-2 border-ink px-1 pb-[calc(6px+env(safe-area-inset-bottom,0px))] pt-1.5 lg:hidden"
+          className="relative flex shrink-0 px-1 pb-[calc(6px+env(safe-area-inset-bottom,0px))] pt-2 lg:hidden"
           aria-label="Nawigacja główna"
         >
+          <Squiggle tone="ink" strokeWidth={2.2} className="absolute inset-x-0 top-0" />
           {NAV.map((item) => {
             const active = isActive(pathname, item.href);
             return (
