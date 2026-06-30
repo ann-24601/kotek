@@ -65,6 +65,71 @@ export async function upsertEntry(
 }
 
 /**
+ * Batchowy, nieniszczący zapis wpisów z UI (parytet z dawnym CatContext.saveLogs):
+ * upsert tylko przekazanych dni (wraz ze `photos`), bez kasowania reszty historii.
+ * Dodatkowo liczy embedding notatki — dzięki temu wpisy robione w aplikacji od razu
+ * trafiają do wyszukiwania wektorowego (wcześniej widział je dopiero backfill).
+ *
+ * Embedding liczymy TYLKO dla dni, których treść notatki faktycznie się zmieniła —
+ * ekran „dziś" re-wysyła całą historię przy każdym zapisie, więc bez tego filtra
+ * generowalibyśmy embedding dla wszystkich notatek na każde kliknięcie „Zapisz".
+ */
+export async function upsertEntries(
+  sb: SupabaseClient,
+  userId: string,
+  entries: DayLog[],
+): Promise<void> {
+  if (entries.length === 0) return;
+  const dates = entries.map((e) => e.date);
+
+  // Stan notatek sprzed zapisu — baza porównania „czy notatka się zmieniła".
+  const { data: prevRows, error: prevErr } = await sb
+    .from("day_logs")
+    .select("date, note")
+    .eq("user_id", userId)
+    .in("date", dates);
+  if (prevErr) throw prevErr;
+  const prevNote = new Map<string, string>();
+  for (const r of (prevRows as { date: string; note: string | null }[] | null) ?? []) {
+    prevNote.set(r.date, stripHtml(r.note ?? ""));
+  }
+
+  const now = new Date().toISOString();
+  const { error } = await sb.from("day_logs").upsert(
+    entries.map((x) => ({
+      user_id: userId,
+      date: x.date,
+      metrics: x.m,
+      note: x.note ?? null,
+      photos: x.photos ?? [],
+      updated_at: now,
+    })),
+    { onConflict: "user_id,date" },
+  );
+  if (error) throw error;
+
+  // Indeksowanie wektorowe (best-effort, równolegle): pojedyncze błędy nie wywracają
+  // zapisu — domknie je skrypt backfill. Pusta notatka -> embedding NULL.
+  await Promise.all(
+    entries.map(async (x) => {
+      const text = x.note ? stripHtml(x.note) : "";
+      if (text === (prevNote.get(x.date) ?? "")) return; // bez zmian -> nie ruszamy embeddingu
+      try {
+        const embedding = text ? toVectorLiteral(await embed(text)) : null;
+        const { error: upErr } = await sb
+          .from("day_logs")
+          .update({ embedding })
+          .eq("user_id", userId)
+          .eq("date", x.date);
+        if (upErr) throw upErr;
+      } catch (err) {
+        console.error("upsertEntries embedding error:", x.date, err);
+      }
+    }),
+  );
+}
+
+/**
  * Generuje i zapisuje embedding notatki wpisu (osobny update).
  * Puste/wyczyszczone notatki -> embedding NULL (wpis znika z ramienia wektorowego).
  */

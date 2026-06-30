@@ -131,31 +131,40 @@ export function CatProvider({ children }: { children: ReactNode }) {
         upsertColumn("play_profile", p);
       },
       saveLogs: (l) => {
-        setLogs(l);
+        setLogs(l); // optymistycznie — UI nie czeka na sieć
         if (!userId) return;
 
-        // Zapis nieniszczący: tylko upsert przekazanych dni. NIE kasujemy dni spoza
-        // tablicy — wcześniej tak robiliśmy ("zapis różnicowy"), ale wywołania z
-        // częściową listą (loader demo) usuwały wtedy całą resztę historii. Pełne
-        // czyszczenie dziennika jest dostępne osobno przez resetAll (z potwierdzeniem).
-        const now = new Date().toISOString();
-
-        void supabase
-          .from("day_logs")
-          .upsert(
-            l.map((x) => ({
-              user_id: userId,
-              date: x.date,
-              metrics: x.m,
-              note: x.note ?? null,
-              photos: x.photos ?? [],
-              updated_at: now,
-            })),
-            { onConflict: "user_id,date" },
-          )
-          .then(({ error }) => {
-            if (error) console.error("Zapis wpisów nie powiódł się:", error.message);
-          });
+        // Zapis przez serwerowy endpoint /api/entries zamiast bezpośrednio do Supabase.
+        // Dzięki temu każda notatka od razu dostaje embedding (klucz OpenAI jest tylko
+        // po stronie serwera) i trafia do wyszukiwania wektorowego behawiorysty — wcześniej
+        // wpisy z UI były niewidoczne dla wyszukiwarki do czasu ręcznego backfillu.
+        // Zapis pozostaje nieniszczący: endpoint robi upsert tylko przekazanych dni.
+        void (async () => {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+          const token = session?.access_token;
+          if (!token) {
+            console.error("Zapis wpisów nie powiódł się: brak aktywnej sesji.");
+            return;
+          }
+          try {
+            const res = await fetch("/api/entries", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ entries: l }),
+            });
+            if (!res.ok) {
+              const detail = (await res.json().catch(() => ({}))) as { error?: string };
+              console.error("Zapis wpisów nie powiódł się:", detail.error ?? res.status);
+            }
+          } catch (err) {
+            console.error("Zapis wpisów nie powiódł się:", err);
+          }
+        })();
       },
       resetAll: () => {
         setProfile(null);
