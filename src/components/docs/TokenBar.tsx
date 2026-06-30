@@ -1,6 +1,6 @@
 /* =============================================================
    Kotek — wspólny pasek tokenu (dokumentacja).
-   Pole, w które użytkownik wkleja swój KOTEK_API_TOKEN; jest on
+   Pole, w które użytkownik wkleja swój osobisty token API; jest on
    podstawiany do przykładów w OBU zakładkach. Token żyje tylko
    w pamięci klienta — nie jest nigdzie wysyłany ani zapisywany.
    ============================================================= */
@@ -41,7 +41,7 @@ export function TokenBar({
           type="password"
           value={token}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="Wklej swój KOTEK_API_TOKEN"
+          placeholder="Wklej swój token osobisty"
           autoComplete="off"
           spellCheck={false}
           className="min-w-0 flex-1 bg-transparent font-mono text-sm text-ink outline-none placeholder:text-ink-faint"

@@ -26,8 +26,9 @@ export default function ApiDocs({ token }: { token: string }) {
         <p className="mt-2 text-ink-soft">Bazowy adres:</p>
         <Code>{BASE}</Code>
         <p className="mt-2 text-ink-soft">
-          Każdy endpoint działa <strong>per użytkownik</strong> i wymaga Personal Access Token
-          w nagłówku. Bez tokenu lub ze złym tokenem zwracane jest <code>401</code>.
+          Każdy endpoint działa <strong>per użytkownik</strong> i wymaga osobistego tokenu
+          w nagłówku (wygeneruj go przyciskiem „Tokeny" u góry po zalogowaniu). Bez tokenu lub
+          ze złym tokenem zwracane jest <code>401</code>.
         </p>
         <Code>{`Authorization: Bearer ${bearer}`}</Code>
         <p className="mt-2 text-ink-soft">

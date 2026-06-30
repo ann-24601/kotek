@@ -3,15 +3,15 @@
    Wystawia dziennik kota agentom AI jako narzędzia MCP:
    add_entry (upsert wpisu), get_entry (odczyt) i search_entries
    (wyszukiwanie hybrydowe: wektor + keyword, RRF).
-   Pakiet: mcp-handler (wzorzec Vercela). Autoryzacja tym samym
-   Bearer tokenem co API v1 (KOTEK_API_TOKEN) przez withMcpAuth.
-   Reużywa helperów serwerowych z src/lib/server/*.
+   Pakiet: mcp-handler (wzorzec Vercela). Autoryzacja osobistym
+   tokenem (per-user) co API v1 — przez withMcpAuth. Reużywa
+   helperów serwerowych z src/lib/server/*.
    ============================================================= */
 import { z } from "zod";
 import { createMcpHandler, withMcpAuth } from "mcp-handler";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import { adminClient, envOrThrow } from "@/lib/server/admin";
-import { checkToken } from "@/lib/server/auth";
+import { adminClient } from "@/lib/server/admin";
+import { resolveBearerUser } from "@/lib/server/auth";
 import { validateMetrics } from "@/lib/server/metrics";
 import { getEntry, upsertEntry } from "@/lib/server/journal";
 import { hybridSearch, type MetricFilters } from "@/lib/server/search";
@@ -27,10 +27,11 @@ const METRIC_FILTER = z.object({
   max: z.number().int().optional(),
 });
 
-/** userId właściciela danych (app jednoużytkownikowa). */
+/** userId właściciela danych — z tokenu osobistego (ustawiany w verifyToken). */
 function ownerId(extra?: { authInfo?: AuthInfo }): string {
   const fromAuth = extra?.authInfo?.extra?.userId;
-  return typeof fromAuth === "string" ? fromAuth : envOrThrow("KOTEK_USER_ID");
+  if (typeof fromAuth !== "string") throw new Error("Brak userId w kontekście autoryzacji MCP.");
+  return fromAuth;
 }
 
 /** Pomocniczo: zawartość tekstowa MCP z obiektu JSON. */
@@ -149,17 +150,19 @@ const handler = createMcpHandler(
   { basePath: "/api" },
 );
 
-/** Weryfikacja Bearer tokenu — ten sam KOTEK_API_TOKEN co REST API. */
+/** Weryfikacja Bearer tokenu — token osobisty (per-user) jak w REST API. */
 async function verifyToken(
   _req: Request,
   bearerToken?: string,
 ): Promise<AuthInfo | undefined> {
-  if (!bearerToken || !checkToken(bearerToken)) return undefined;
+  if (!bearerToken) return undefined;
+  const userId = await resolveBearerUser(bearerToken);
+  if (!userId) return undefined;
   return {
     token: bearerToken,
     scopes: [],
     clientId: "kotek",
-    extra: { userId: envOrThrow("KOTEK_USER_ID") },
+    extra: { userId },
   };
 }
 

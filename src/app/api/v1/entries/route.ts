@@ -2,7 +2,7 @@
    Kotek API v1 — wpisy dziennika.
    POST = dodanie/aktualizacja wpisu (domyślnie dziś).
    GET  = odczyt wpisu na dany dzień (domyślnie dziś).
-   Autoryzacja: Authorization: Bearer <KOTEK_API_TOKEN>.
+   Autoryzacja: Authorization: Bearer <osobisty token z /docs>.
    ============================================================= */
 import { adminClient } from "@/lib/server/admin";
 import { requireToken } from "@/lib/server/auth";
@@ -15,7 +15,7 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const today = () => new Date().toISOString().slice(0, 10);
 
 export async function POST(req: Request) {
-  const auth = requireToken(req);
+  const auth = await requireToken(req);
   if (auth instanceof Response) return auth;
 
   let body: Record<string, unknown>;
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
 }
 
 export async function GET(req: Request) {
-  const auth = requireToken(req);
+  const auth = await requireToken(req);
   if (auth instanceof Response) return auth;
 
   const date = new URL(req.url).searchParams.get("date") ?? today();

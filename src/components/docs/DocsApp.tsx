@@ -10,7 +10,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/Icon";
-import { TokenBar } from "./TokenBar";
+import { TokenManager } from "./TokenManager";
 import ApiDocs from "./ApiDocs";
 import McpDocs from "./McpDocs";
 
@@ -47,7 +47,7 @@ export default function DocsApp() {
             <span className="font-hand text-[1.3rem] font-bold tracking-wide">Kotek</span>
             <span className="tag tag-ghost ml-1 !px-2 !py-1 !text-xs">Docs</span>
           </Link>
-          <TokenBar token={token} onChange={setToken} />
+          <TokenManager token={token} onChange={setToken} />
         </div>
 
         {/* Przełącznik zakładek (styl Vercel — podkreślenie aktywnej) */}

@@ -2,7 +2,7 @@
    Kotek API v1 — pytanie do agenta-behawiorysty (JSON, bez streamingu).
    Kontekst = pełny profil + wszystkie wpisy, z wyróżnieniem dnia.
    Historia rozmowy trzymana per dzień (chat_messages).
-   Autoryzacja: Authorization: Bearer <KOTEK_API_TOKEN>.
+   Autoryzacja: Authorization: Bearer <osobisty token z /docs>.
    ============================================================= */
 import { Agent, run, setDefaultOpenAIKey, type AgentInputItem } from "@openai/agents";
 import { buildInstructions } from "@/lib/behaviorist";
@@ -17,7 +17,7 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const today = () => new Date().toISOString().slice(0, 10);
 
 export async function POST(req: Request) {
-  const auth = requireToken(req);
+  const auth = await requireToken(req);
   if (auth instanceof Response) return auth;
 
   const apiKey = process.env.OPENAI_API_KEY;

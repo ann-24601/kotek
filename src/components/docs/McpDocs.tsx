@@ -30,10 +30,10 @@ export default function McpDocs({ token }: { token: string }) {
       <section id="mcp-setup" className="mt-12 scroll-mt-6">
         <h2 className="text-2xl">Autoryzacja</h2>
         <p className="mt-2 text-ink-soft">
-          Serwer chroniony jest tym samym Personal Access Token co REST API. Klient wysyła go w
+          Serwer chroniony jest tym samym osobistym tokenem co REST API. Klient wysyła go w
           nagłówku <code>Authorization</code>. Bez tokenu lub ze złym tokenem połączenie jest
-          odrzucane (<code>401</code>). Wklej swój token w pasku u góry, a poniższe configi
-          podstawią go automatycznie.
+          odrzucane (<code>401</code>). Wygeneruj token przyciskiem „Tokeny" u góry (po
+          zalogowaniu) lub wklej go w pasku — poniższe configi podstawią go automatycznie.
         </p>
         <Code>{`Authorization: Bearer ${bearer}`}</Code>
       </section>
