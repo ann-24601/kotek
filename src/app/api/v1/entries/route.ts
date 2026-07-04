@@ -6,6 +6,7 @@
    ============================================================= */
 import { adminClient } from "@/lib/server/admin";
 import { requireToken } from "@/lib/server/auth";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/server/ratelimit";
 import { validateMetrics } from "@/lib/server/metrics";
 import { getEntry, upsertEntry } from "@/lib/server/journal";
 
@@ -17,6 +18,9 @@ const today = () => new Date().toISOString().slice(0, 10);
 export async function POST(req: Request) {
   const auth = await requireToken(req);
   if (auth instanceof Response) return auth;
+
+  const limited = await enforceRateLimit(adminClient(), `entries:${auth.userId}`, RATE_LIMITS.write);
+  if (limited) return limited;
 
   let body: Record<string, unknown>;
   try {
@@ -54,6 +58,9 @@ export async function POST(req: Request) {
 export async function GET(req: Request) {
   const auth = await requireToken(req);
   if (auth instanceof Response) return auth;
+
+  const limited = await enforceRateLimit(adminClient(), `entries:${auth.userId}`, RATE_LIMITS.write);
+  if (limited) return limited;
 
   const date = new URL(req.url).searchParams.get("date") ?? today();
   if (!ISO_DATE.test(date)) {

@@ -8,6 +8,7 @@ import { Agent, run, setDefaultOpenAIKey, type AgentInputItem } from "@openai/ag
 import { buildInstructions } from "@/lib/behaviorist";
 import { adminClient } from "@/lib/server/admin";
 import { requireToken } from "@/lib/server/auth";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/server/ratelimit";
 import { appendDayMessages, getDayHistory, loadContext } from "@/lib/server/journal";
 import type { ChatMessage } from "@/lib/types";
 
@@ -19,6 +20,10 @@ const today = () => new Date().toISOString().slice(0, 10);
 export async function POST(req: Request) {
   const auth = await requireToken(req);
   if (auth instanceof Response) return auth;
+
+  // Limit kosztu OpenAI per token (userId). Chroni przy wycieku tokenu.
+  const limited = await enforceRateLimit(adminClient(), `ask:${auth.userId}`, RATE_LIMITS.ai);
+  if (limited) return limited;
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {

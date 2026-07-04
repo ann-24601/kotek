@@ -12,6 +12,7 @@ import { createMcpHandler, withMcpAuth } from "mcp-handler";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { adminClient } from "@/lib/server/admin";
 import { resolveBearerUser } from "@/lib/server/auth";
+import { checkRateLimit, RATE_LIMITS } from "@/lib/server/ratelimit";
 import { validateMetrics } from "@/lib/server/metrics";
 import { getEntry, upsertEntry } from "@/lib/server/journal";
 import { hybridSearch, type MetricFilters } from "@/lib/server/search";
@@ -42,6 +43,12 @@ function fail(message: string) {
   return { content: [{ type: "text" as const, text: message }], isError: true };
 }
 
+/** Rate limit per user dla narzędzi MCP. Zwraca komunikat błędu (fail) albo null. */
+async function rateGuard(extra?: { authInfo?: AuthInfo }) {
+  const v = await checkRateLimit(adminClient(), `mcp:${ownerId(extra)}`, RATE_LIMITS.write);
+  return v.allowed ? null : fail("Zbyt wiele żądań — spróbuj za chwilę.");
+}
+
 const handler = createMcpHandler(
   (server) => {
     server.tool(
@@ -68,6 +75,8 @@ const handler = createMcpHandler(
           .describe("Notatka jako HTML, np. <p>...</p>. Opcjonalna."),
       },
       async ({ date, metrics, note }, extra) => {
+        const rl = await rateGuard(extra);
+        if (rl) return rl;
         const day = date ?? today();
         const v = validateMetrics(metrics);
         if ("error" in v) return fail(v.error);
@@ -94,6 +103,8 @@ const handler = createMcpHandler(
           .describe("Dzień YYYY-MM-DD. Domyślnie dziś."),
       },
       async ({ date }, extra) => {
+        const rl = await rateGuard(extra);
+        if (rl) return rl;
         const day = date ?? today();
         try {
           const entry = await getEntry(adminClient(), ownerId(extra), day);
@@ -132,6 +143,8 @@ const handler = createMcpHandler(
           .describe("Maks. liczba wyników. Domyślnie 30."),
       },
       async ({ query, filters, limit }, extra) => {
+        const rl = await rateGuard(extra);
+        if (rl) return rl;
         try {
           const hits = await hybridSearch(adminClient(), ownerId(extra), {
             query,

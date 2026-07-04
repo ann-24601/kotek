@@ -16,6 +16,7 @@ import { FREE_AGENT_ID, getAgent } from "@/lib/agents/registry";
 import { makeSearchDiaryTool } from "@/lib/server/agent-tools";
 import { adminClient } from "@/lib/server/admin";
 import { requireUser } from "@/lib/server/auth";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/server/ratelimit";
 import { hybridSearch } from "@/lib/server/search";
 import type { ChatMessage } from "@/lib/types";
 
@@ -73,6 +74,9 @@ async function retrieveRelevant(userId: string, query: string): Promise<Retrieve
 export async function POST(req: Request) {
   const auth = await requireUser(req);
   if (auth instanceof Response) return auth;
+
+  const limited = await enforceRateLimit(adminClient(), `chat:${auth.userId}`, RATE_LIMITS.ai);
+  if (limited) return limited;
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
