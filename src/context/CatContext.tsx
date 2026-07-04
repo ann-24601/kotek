@@ -27,23 +27,6 @@ interface CatState {
 
 const Ctx = createContext<CatState | null>(null);
 
-/* --- mapowanie wierszy day_logs <-> DayLog --- */
-interface DayLogRow {
-  date: string;
-  metrics: DayLog["m"];
-  note: string | null;
-  photos: string[] | null;
-}
-
-function rowToLog(r: DayLogRow): DayLog {
-  return {
-    date: r.date,
-    m: r.metrics ?? {},
-    note: r.note ?? undefined,
-    photos: r.photos ?? [],
-  };
-}
-
 export function CatProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const userId = user?.id ?? null;
@@ -69,24 +52,43 @@ export function CatProvider({ children }: { children: ReactNode }) {
 
     setLoaded(false);
     (async () => {
-      const [{ data: prof }, { data: rows }] = await Promise.all([
+      // Profil zostaje w Supabase; wpisy czytamy z serwera (źródło prawdy = Strapi,
+      // token Strapi jest wyłącznie po stronie serwera).
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      const [{ data: prof }, logs] = await Promise.all([
         supabase
           .from("cat_profiles")
           .select("profile, play_profile, pillars")
           .eq("user_id", userId)
           .maybeSingle(),
-        supabase
-          .from("day_logs")
-          .select("date, metrics, note, photos")
-          .eq("user_id", userId)
-          .order("date", { ascending: true }),
+        (async (): Promise<DayLog[]> => {
+          if (!token) return [];
+          try {
+            const res = await fetch("/api/entries", {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!res.ok) {
+              console.error("Odczyt wpisów nie powiódł się:", res.status);
+              return [];
+            }
+            const j = (await res.json()) as { logs?: DayLog[] };
+            return j.logs ?? [];
+          } catch (err) {
+            console.error("Odczyt wpisów nie powiódł się:", err);
+            return [];
+          }
+        })(),
       ]);
 
       if (!active) return;
       setProfile((prof?.profile as CatProfile) ?? null);
       setPlayProfile((prof?.play_profile as PlayProfile) ?? null);
       setPillars((prof?.pillars as Pillars) ?? {});
-      setLogs(((rows as DayLogRow[] | null) ?? []).map(rowToLog));
+      setLogs(logs);
       setLoaded(true);
     })();
 
@@ -172,7 +174,19 @@ export function CatProvider({ children }: { children: ReactNode }) {
         setPlayProfile(null);
         setLogs([]);
         if (!userId) return;
-        void supabase.from("day_logs").delete().eq("user_id", userId);
+        // Wpisy kasujemy przez serwer (źródło prawdy = Strapi); profil w Supabase.
+        void (async () => {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+          const token = session?.access_token;
+          if (token) {
+            await fetch("/api/entries", {
+              method: "DELETE",
+              headers: { Authorization: `Bearer ${token}` },
+            }).catch((err) => console.error("Reset wpisów nie powiódł się:", err));
+          }
+        })();
         void supabase.from("cat_profiles").delete().eq("user_id", userId);
       },
     };

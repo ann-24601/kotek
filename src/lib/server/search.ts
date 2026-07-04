@@ -66,7 +66,7 @@ export async function hybridSearch(
     embeddingLiteral = toVectorLiteral(await embed(query));
   }
 
-  const { data, error } = await sb.rpc("hybrid_search_day_logs", {
+  const { data, error } = await sb.rpc("hybrid_search_entries", {
     p_user_id: userId,
     p_query_text: query,
     p_query_embedding: embeddingLiteral,

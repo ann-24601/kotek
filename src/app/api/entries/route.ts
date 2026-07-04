@@ -1,14 +1,15 @@
 /* =============================================================
-   Kotek — zapis wpisów dziennika z aplikacji (per-user).
-   POST = batchowy, nieniszczący upsert dni zalogowanego użytkownika
-   wraz z generowaniem embeddingów notatek (wyszukiwanie wektorowe).
+   Kotek — wpisy dziennika z aplikacji (per-user). Źródło prawdy = Strapi.
+   GET    = wszystkie wpisy zalogowanego użytkownika (ekran dziennika).
+   POST   = batchowy, nieniszczący upsert dni (zapis do Strapi).
+   DELETE = wyczyszczenie wszystkich wpisów użytkownika (reset onboardingu).
    Autoryzacja: Authorization: Bearer <access_token sesji Supabase>.
-   Odpowiednik dawnego bezpośredniego zapisu z CatContext.saveLogs,
-   ale liczący embedding po stronie serwera (klucz OpenAI jest serwerowy).
+   Embedding/entry_index domyka webhook Strapi (zob. /api/strapi-sync).
    ============================================================= */
 import { adminClient } from "@/lib/server/admin";
 import { requireUser } from "@/lib/server/auth";
-import { upsertEntries } from "@/lib/server/journal";
+import { listEntries, upsertEntries } from "@/lib/server/journal";
+import { deleteWpis, listWpisy } from "@/lib/server/strapi";
 import type { DayLog } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -61,5 +62,40 @@ export async function POST(req: Request) {
   } catch (err) {
     console.error("entries POST error:", err);
     return Response.json({ error: "Zapis nieudany." }, { status: 500 });
+  }
+}
+
+export async function GET(req: Request) {
+  const auth = await requireUser(req);
+  if (auth instanceof Response) return auth;
+
+  try {
+    const logs = await listEntries(auth.userId);
+    return Response.json({ ok: true, logs });
+  } catch (err) {
+    console.error("entries GET error:", err);
+    return Response.json({ error: "Odczyt nieudany." }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: Request) {
+  const auth = await requireUser(req);
+  if (auth instanceof Response) return auth;
+
+  try {
+    // Usuń wpisy ze Strapi (lifecycle webhook dosprząta entry_index)...
+    const wpisy = await listWpisy(auth.userId);
+    for (const w of wpisy) await deleteWpis(w.documentId);
+    // ...i dla pewności wyczyść pochodny indeks bezpośrednio.
+    const sb = adminClient();
+    const { error } = await sb
+      .from("entry_index")
+      .delete()
+      .eq("user_id", auth.userId);
+    if (error) throw error;
+    return Response.json({ ok: true, deleted: wpisy.length });
+  } catch (err) {
+    console.error("entries DELETE error:", err);
+    return Response.json({ error: "Reset nieudany." }, { status: 500 });
   }
 }
