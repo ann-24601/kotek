@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/Icon";
-import { CatEmpty } from "@/components/Illustration";
+import { Art } from "@/components/Illustration";
+import { RoughBorder } from "@/components/RoughBorder";
+import { AgentToggle } from "@/components/AgentToggle";
 import { Markdown } from "@/components/Markdown";
 import { useAuth } from "@/context/AuthContext";
 import { useAgents } from "@/context/AgentsContext";
@@ -28,10 +30,10 @@ export function Chat() {
   }, [msgs, busy]);
 
   const suggestions = [
-    `${name}: jak go dziś wybawić?`,
-    `${name} miauczy o jedzenie — jak to przerwać?`,
+    `Jak wybawić dzisiaj ${name}?`,
+    "Jak przerwać miauczenie o jedzenie?",
     "Co mówią dane z ostatnich dni?",
-    "Czy dobrze urządziłem mu środowisko?",
+    "Dobrze urządzone środowisko",
   ];
 
   const send = async (text?: string) => {
@@ -74,22 +76,25 @@ export function Chat() {
   };
 
   return (
-    <div className="flex min-h-full flex-col pt-2">
+    <div className="flex min-h-full flex-col pt-1">
+      <div className="mb-3 flex justify-center">
+        <AgentToggle />
+      </div>
       <div className="flex flex-1 flex-col gap-3 overflow-y-auto pb-4" role="log" aria-live="polite">
         {msgs.length === 0 && (
           <div>
-            <div className="mb-2 flex justify-center" aria-hidden="true">
-              <CatEmpty size={132} />
+            <div className="mb-4 flex justify-center" aria-hidden="true">
+              <Art name="lenistwo" size={260} className="max-w-full" />
             </div>
-            <h2 className="mb-1 text-center text-xl">Z czym mogę pomóc?</h2>
-            <p className="mb-4 text-center text-sm text-ink-soft">
-              Pytaj o zabawę, rytuał albo nietypowe zachowania Twojego kota.
+            <h2 className="mb-1.5 text-center text-2xl">Z czym mogę pomóc?</h2>
+            <p className="mx-auto mb-6 max-w-[19rem] text-center text-sm text-ink-soft">
+              Możesz zapytać o zabawę, rytuały lub nietypowe zachowania Twojego kota.
             </p>
             <div className="flex flex-col gap-2.5">
               {suggestions.map((s) => (
                 <button
                   key={s}
-                  className="ink-edge ink-edge--chip flex min-h-11 items-center gap-2.5 rounded-[var(--r-chip)] bg-paper px-4 py-2.5 text-left text-sm text-ink transition-transform active:translate-x-[1px] active:translate-y-[1px]"
+                  className="flex min-h-11 items-center gap-2.5 rounded-[13px] bg-ink px-4 py-2.5 text-left text-sm font-bold text-paper transition-transform active:translate-x-[1px] active:translate-y-[1px]"
                   onClick={() => send(s)}
                 >
                   <Icon name="arrowRight" size={16} className="shrink-0" />
@@ -133,7 +138,8 @@ export function Chat() {
       </div>
 
       <div className="sticky bottom-0 flex gap-2 bg-paper py-3">
-        <div className="ink-edge flex-1 rounded-[var(--r-box)] bg-paper focus-within:outline focus-within:outline-[2.5px] focus-within:outline-dashed focus-within:outline-ink focus-within:outline-offset-[3px]">
+        <div className="relative flex-1 rounded-[14px] bg-paper focus-within:outline focus-within:outline-[2.5px] focus-within:outline-dashed focus-within:outline-ink focus-within:outline-offset-[3px]">
+          <RoughBorder radius={14} wavelength={22} amplitude={2.2} />
           <input
             className="min-h-11 w-full rounded-[var(--r-box)] bg-transparent px-3.5 py-3 text-base text-ink placeholder:text-ink-faint focus:outline-none"
             value={input}
@@ -144,7 +150,7 @@ export function Chat() {
           />
         </div>
         <button
-          className="ink-edge inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--r-box)] bg-ink text-paper disabled:opacity-40"
+          className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[13px] bg-ink text-paper disabled:opacity-40"
           onClick={() => send()}
           disabled={busy || !input.trim()}
           aria-label="Wyślij wiadomość"

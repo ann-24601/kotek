@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Shantell_Sans, Inter } from "next/font/google";
+import { Shantell_Sans, Poppins } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { AppFrame } from "@/components/AppFrame";
@@ -11,9 +11,10 @@ const shantell = Shantell_Sans({
   display: "swap",
 });
 
-const inter = Inter({
+const poppins = Poppins({
   subsets: ["latin-ext"],
-  variable: "--font-inter",
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-poppins",
   display: "swap",
 });
 
@@ -32,7 +33,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pl" className={`${shantell.variable} ${inter.variable}`}>
+    <html lang="pl" className={`${shantell.variable} ${poppins.variable}`}>
       <body>
         <a href="#tresc" className="sr-only">
           Przejdź do treści

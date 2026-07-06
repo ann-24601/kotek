@@ -153,7 +153,7 @@ FORMATOWANIE (Markdown — odpowiedź jest renderowana jako Markdown):
 TREŚĆ:
 - Opieraj porady na danych z profilu i dziennika poniżej. Odwołuj się do konkretnych obserwacji opiekuna (daty, metryki, notatki), zamiast mówić ogólnikami.
 - Dawaj praktyczne, wykonalne kroki dopasowane do tego kota (jego stylu łowieckiego, temperamentu, środowiska).
-- NIE jesteś weterynarzem i nie diagnozujesz chorób. Gdy widzisz czerwoną flagę zdrowotną (np. apetyt "Mniej"/brak jedzenia, nagłe duże zmiany w aktywności, ukrywanie się, sygnały bólu) — wyraźnie zalecaj wizytę u weterynarza.
+- NIE jesteś weterynarzem i nie diagnozujesz chorób. Gdy widzisz czerwoną flagę zdrowotną (np. apetyt "Słaby"/brak jedzenia, nagłe duże zmiany w aktywności, ukrywanie się, sygnały bólu) — wyraźnie zalecaj wizytę u weterynarza.
 - Bądź zwięzły: kilka akapitów lub krótka lista kroków. Bez ścian tekstu.`;
 
 /* Persona wersji PRO — bogatsza, bardziej dociekliwa analiza. Ten sam model,

@@ -15,6 +15,61 @@ interface IllProps {
   title?: string;
 }
 
+/* =============================================================
+   Art — ręczne ilustracje rastrowe (PNG w /public/illustrations).
+   Klucze mapują na dodane przez użytkowniczkę rysunki. Ikony (SVG)
+   zostają bez zmian; to uzupełnienie do „hero"/kart/pustych stanów.
+   ============================================================= */
+export type ArtName =
+  | "miauczenie"
+  | "jedzenie"
+  | "karty"
+  | "zabawa"
+  | "zabawa-logiczna"
+  | "relaks"
+  | "lenistwo"
+  | "behawiorysta"
+  | "dziennik"
+  | "kalendarz"
+  | "karty-i-jedzenie";
+
+const ART_ALT: Record<ArtName, string> = {
+  miauczenie: "Kot śpiewa do mikrofonu",
+  jedzenie: "Kot je z miski",
+  karty: "Znudzony kot przy stole",
+  zabawa: "Kot skacze za zabawką",
+  "zabawa-logiczna": "Kot bawi się puzzle feederem",
+  relaks: "Kot medytuje",
+  lenistwo: "Leniwy kot na kanapie",
+  behawiorysta: "Kot z lornetką na drapaku",
+  dziennik: "Kot pisze w dzienniku przy kalendarzu",
+  kalendarz: "Kot zaznacza dzień w kalendarzu",
+  "karty-i-jedzenie": "Kot przy stole z kartami i miską",
+};
+
+export function Art({
+  name,
+  size = 160,
+  fluid = false,
+  className,
+  style,
+  title,
+}: IllProps & { name: ArtName; fluid?: boolean }) {
+  const alt = title ?? "";
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={`/illustrations/${name}.png`}
+      alt={alt || ART_ALT[name]}
+      loading="lazy"
+      decoding="async"
+      aria-hidden={alt ? undefined : true}
+      className={cn("h-auto select-none object-contain", fluid && "w-full", className)}
+      style={fluid ? style : { width: size, ...style }}
+    />
+  );
+}
+
 /* --- 4-ramienna gwiazdka / błysk (jak w Broken Swords) --- */
 export function Sparkle({ size = 24, className, style }: IllProps) {
   return (

@@ -3,15 +3,15 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const chipVariants = cva(
-  "ink-edge ink-edge--chip [--edge:#c9c9c4] inline-flex items-center gap-1.5 min-h-[38px] px-3.5 py-[7px] font-mono font-medium text-sm leading-tight rounded-[var(--r-chip)] text-ink bg-paper transition-transform active:scale-95 focus-visible:outline-none",
+  "relative inline-flex items-center gap-1.5 min-h-[38px] px-3.5 py-[7px] font-mono font-medium text-sm leading-tight rounded-[13px] text-ink bg-paper transition-transform active:scale-95 focus-visible:outline-none",
   {
     variants: {
       tone: { default: "", danger: "" },
       selected: { true: "", false: "" },
     },
     compoundVariants: [
-      { tone: "default", selected: true, class: "bg-ink text-paper [--edge:var(--ink)]" },
-      { tone: "danger", selected: true, class: "bg-danger text-paper [--edge:var(--danger)]" },
+      { tone: "default", selected: true, class: "bg-ink text-paper" },
+      { tone: "danger", selected: true, class: "bg-danger text-paper" },
     ],
     defaultVariants: { tone: "default", selected: false },
   },
@@ -30,14 +30,20 @@ export function ToggleChip({
   children,
   ...props
 }: ToggleChipProps) {
+  // niewybrany → czysta, jednolita obwódka; wybrany → pełny „pill" (obwódka przezroczysta, by nie skakał rozmiar)
+  const borderCls = selected
+    ? "border-2 border-transparent"
+    : tone === "danger"
+      ? "border-2 border-danger"
+      : "border-2 border-[#c9c9c4]";
   return (
     <button
       type="button"
       aria-pressed={selected}
-      className={cn(chipVariants({ tone, selected }), className)}
+      className={cn(chipVariants({ tone, selected }), borderCls, className)}
       {...props}
     >
-      {children}
+      <span className="relative">{children}</span>
     </button>
   );
 }

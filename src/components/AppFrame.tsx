@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Icon, type IconName } from "@/components/Icon";
-import { AgentSwitcher } from "@/components/AgentSwitcher";
+import { AddEntryButton } from "@/components/AddEntryButton";
 import { Squiggle } from "@/components/Squiggle";
 import { useCat } from "@/context/CatContext";
 import { useAuth } from "@/context/AuthContext";
@@ -19,9 +19,9 @@ interface NavItem {
 }
 
 const NAV: NavItem[] = [
-  { href: "/", label: "Dziś", icon: "today" },
+  { href: "/", label: "Dzisiaj", icon: "today" },
   { href: "/behawiorysta", label: "Behawiorysta", icon: "chat" },
-  { href: "/statystyki", label: "Statystyki", icon: "stats" },
+  { href: "/historia", label: "Historia", icon: "note" },
 ];
 
 function isActive(pathname: string, href: string) {
@@ -70,6 +70,15 @@ export function AppFrame({ children }: { children: ReactNode }) {
     return <Onboarding />;
   }
 
+  // „Dodaj wpis" jest pełnoekranowym widokiem — bez sidebaru, nagłówka i dolnej nawigacji.
+  if (pathname.startsWith("/dodaj-wpis")) {
+    return <>{children}</>;
+  }
+
+  const isSettings = pathname.startsWith("/ustawienia");
+  // podstrony z własnym nagłówkiem „wstecz + nazwa" nie potrzebują górnego paska powłoki
+  const hideTopHeader = isSettings || pathname.startsWith("/agenci");
+
   return (
     <div className="flex h-[100dvh] overflow-hidden">
       {/* Sidebar — desktop */}
@@ -95,23 +104,6 @@ export function AppFrame({ children }: { children: ReactNode }) {
         </nav>
         <div className="mt-auto flex flex-col gap-2">
           <Link
-            href="/agenci"
-            className={cn(
-              "flex min-h-11 items-center gap-3 rounded-[var(--r-chip)] border-2 border-transparent px-3.5 py-[11px] font-hand text-[1.1875rem] font-semibold text-ink no-underline hover:border-hairline",
-              isActive(pathname, "/agenci") && "ink-edge ink-edge--chip bg-ink text-paper",
-            )}
-          >
-            <Icon name="agents" size={25} />
-            <span>Agenci</span>
-          </Link>
-          <Link
-            href="/docs"
-            className="flex min-h-11 items-center gap-3 rounded-[var(--r-chip)] border-2 border-transparent px-3.5 py-[11px] font-hand text-[1.1875rem] font-semibold text-ink no-underline hover:border-hairline"
-          >
-            <Icon name="note" size={25} />
-            <span>Dokumentacja</span>
-          </Link>
-          <Link
             href="/ustawienia"
             className={cn(
               "flex min-h-11 items-center gap-3 rounded-[var(--r-chip)] border-2 border-transparent px-3.5 py-[11px] font-hand text-[1.1875rem] font-semibold text-ink no-underline hover:border-hairline",
@@ -126,29 +118,23 @@ export function AppFrame({ children }: { children: ReactNode }) {
 
       {/* Treść */}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <header className="relative flex shrink-0 items-center justify-between gap-2 px-4 py-3 lg:hidden">
-          <Squiggle tone="ink" strokeWidth={2.2} className="absolute inset-x-0 bottom-0" />
-          <div>
-            <Logo />
-          </div>
-          <div className="flex items-center gap-2">
-            <Link
-              href="/docs"
-              className="inline-flex h-11 w-11 items-center justify-center ink-edge rounded-[var(--r-box)] bg-paper text-ink no-underline active:translate-x-[1px] active:translate-y-[1px]"
-              aria-label="Dokumentacja API"
-            >
-              <Icon name="note" size={22} />
-            </Link>
-            <button
-              className="inline-flex h-11 w-11 items-center justify-center ink-edge rounded-[var(--r-box)] bg-paper text-ink active:translate-x-[1px] active:translate-y-[1px]"
-              onClick={() => router.push("/ustawienia")}
-              aria-label="Ustawienia"
-            >
-              <Icon name="settings" size={24} />
-            </button>
-            <AgentSwitcher />
-          </div>
-        </header>
+        {!hideTopHeader && (
+          <header className="relative flex shrink-0 items-center justify-between gap-2 px-4 py-3 lg:hidden">
+            <Squiggle tone="ink" strokeWidth={2.2} className="absolute inset-x-0 bottom-0" />
+            <div>
+              <Logo />
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                className="inline-flex h-11 w-11 items-center justify-center text-ink active:translate-x-[1px] active:translate-y-[1px]"
+                onClick={() => router.push("/ustawienia")}
+                aria-label="Ustawienia"
+              >
+                <Icon name="settings" size={30} />
+              </button>
+            </div>
+          </header>
+        )}
 
         <main className="min-h-0 flex-1 overflow-y-auto" id="tresc">
           <div className="mx-auto max-w-[720px] px-4 py-4 pb-8 lg:px-6 lg:py-8">
@@ -156,36 +142,41 @@ export function AppFrame({ children }: { children: ReactNode }) {
           </div>
         </main>
 
+        {/* Floating „Dodaj wpis" — na Dzisiaj i Historii */}
+        {(pathname === "/" || pathname.startsWith("/historia")) && <AddEntryButton />}
+
         {/* Dolna nawigacja — mobile */}
-        <nav
-          className="relative flex shrink-0 px-1 pb-[calc(6px+env(safe-area-inset-bottom,0px))] pt-2 lg:hidden"
-          aria-label="Nawigacja główna"
-        >
-          <Squiggle tone="ink" strokeWidth={2.2} className="absolute inset-x-0 top-0" />
-          {NAV.map((item) => {
-            const active = isActive(pathname, item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex min-h-11 flex-1 flex-col items-center gap-[3px] py-1.5 no-underline",
-                  active ? "text-ink" : "text-ink-faint",
-                )}
-              >
-                <Icon name={item.icon} size={26} />
-                <span
+        {!isSettings && (
+          <nav
+            className="relative flex shrink-0 px-1 pb-[calc(6px+env(safe-area-inset-bottom,0px))] pt-2 lg:hidden"
+            aria-label="Nawigacja główna"
+          >
+            <Squiggle tone="ink" strokeWidth={2.2} className="absolute inset-x-0 top-0" />
+            {NAV.map((item) => {
+              const active = isActive(pathname, item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
                   className={cn(
-                    "font-hand text-xs font-semibold",
-                    active && "underline decoration-2 underline-offset-[3px]",
+                    "flex min-h-11 flex-1 flex-col items-center gap-[3px] py-1.5 no-underline",
+                    active ? "text-ink" : "text-ink-faint",
                   )}
                 >
-                  {item.label}
-                </span>
-              </Link>
-            );
-          })}
-        </nav>
+                  <Icon name={item.icon} size={26} />
+                  <span
+                    className={cn(
+                      "font-hand text-xs font-semibold",
+                      active && "underline decoration-2 underline-offset-[3px]",
+                    )}
+                  >
+                    {item.label}
+                  </span>
+                </Link>
+              );
+            })}
+          </nav>
+        )}
       </div>
     </div>
   );

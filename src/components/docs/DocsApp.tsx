@@ -36,44 +36,45 @@ export default function DocsApp() {
   return (
     <div className="flex min-h-[100dvh] flex-col">
       {/* Wspólny górny pasek */}
-      <header className="sticky top-0 z-20 border-b-2 border-ink bg-paper">
+      <header className="sticky top-0 z-20 border-b border-hairline bg-paper">
         <div className="flex flex-col gap-3 px-4 py-3 lg:flex-row lg:items-center lg:justify-between lg:px-6">
-          <Link
-            href="/"
-            className="flex items-center gap-2 text-ink no-underline"
-            aria-label="Powrót do aplikacji Kotek"
-          >
-            <Icon name="cat" size={30} />
-            <span className="font-hand text-[1.3rem] font-bold tracking-wide">Kotek</span>
-            <span className="tag tag-ghost ml-1 !px-2 !py-1 !text-xs">Docs</span>
-          </Link>
+          <div className="flex items-center justify-between gap-3">
+            <Link
+              href="/"
+              className="-ml-1 inline-flex h-9 w-9 shrink-0 items-center justify-center text-ink no-underline active:opacity-60"
+              aria-label="Wróć do aplikacji Kotek"
+            >
+              <Icon name="arrowRight" size={22} className="rotate-180" />
+            </Link>
+            <span className="font-hand text-[1.6rem] font-bold tracking-wide">Docs</span>
+          </div>
           <TokenManager token={token} onChange={setToken} />
         </div>
 
-        {/* Przełącznik zakładek (styl Vercel — podkreślenie aktywnej) */}
-        <nav className="flex gap-1 px-4 lg:px-6" aria-label="Sekcje dokumentacji">
-          {(["api", "mcp"] as Tab[]).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTab(t)}
-              aria-current={tab === t ? "page" : undefined}
-              className={
-                "relative -mb-0.5 px-3 py-2.5 font-hand text-[1.0625rem] font-semibold no-underline transition-colors " +
-                (tab === t
-                  ? "text-ink after:absolute after:inset-x-2 after:-bottom-0.5 after:h-0.5 after:bg-ink after:content-['']"
-                  : "text-ink-faint hover:text-ink")
-              }
-            >
-              {t === "api" ? "API" : "MCP"}
-            </button>
-          ))}
+        {/* Przełącznik sekcji API / MCP — segmentowy switch */}
+        <nav className="px-4 pb-3 lg:px-6" aria-label="Sekcje dokumentacji">
+          <div className="inline-flex rounded-full border-2 border-[#c9c9c4] p-0.5">
+            {(["api", "mcp"] as Tab[]).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTab(t)}
+                aria-current={tab === t ? "page" : undefined}
+                className={
+                  "rounded-full px-5 py-1.5 font-hand text-[1.0625rem] font-semibold no-underline transition-colors " +
+                  (tab === t ? "bg-ink text-paper" : "text-ink-soft hover:text-ink")
+                }
+              >
+                {t === "api" ? "API" : "MCP"}
+              </button>
+            ))}
+          </div>
         </nav>
       </header>
 
       {/* Treść + lewa nawigacja kotwic */}
       <div className="flex flex-1 flex-col lg:flex-row">
-        <aside className="shrink-0 border-b-2 border-ink lg:sticky lg:top-[var(--docs-aside-top,7.5rem)] lg:h-fit lg:w-[var(--sidebar-w)] lg:border-b-0 lg:border-r-2">
+        <aside className="shrink-0 lg:sticky lg:top-[var(--docs-aside-top,7.5rem)] lg:h-fit lg:w-[var(--sidebar-w)] lg:border-r-2 lg:border-ink">
           <nav className="no-scrollbar flex gap-2 overflow-x-auto px-4 py-3 lg:flex-col lg:py-4">
             <p className="hidden shrink-0 px-1 pb-1 font-hand text-sm font-semibold uppercase tracking-wide text-ink-faint lg:block">
               {tab === "api" ? "API" : "MCP"}
@@ -82,7 +83,7 @@ export default function DocsApp() {
               <a
                 key={item.href}
                 href={item.href}
-                className="flex min-h-11 shrink-0 items-center gap-2 rounded-[var(--r-chip)] border-2 border-transparent px-3 py-2 font-hand text-[1.0625rem] font-semibold text-ink no-underline hover:border-hairline"
+                className="flex min-h-11 shrink-0 items-center gap-2 rounded-[var(--r-chip)] border-2 border-[#c9c9c4] px-3 py-2 font-hand text-[1.0625rem] font-semibold text-ink no-underline transition-colors hover:border-ink"
               >
                 <Icon name="note" size={20} />
                 <span>{item.label}</span>

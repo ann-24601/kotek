@@ -13,16 +13,20 @@ export function RoughDefs() {
       style={{ position: "absolute", width: 0, height: 0, pointerEvents: "none" }}
     >
       <defs>
-        {/* delikatne „drżenie" — ramki pól, przyciski, pigułki */}
-        <filter id="rough" x="-6%" y="-6%" width="112%" height="112%">
+        {/* „krzywa" obwódka wg referencji z Figmy — duże, GŁADKIE, organiczne pętle
+           grubego markera. Klucz do braku „pikselozy": rozmywamy mapę szumu
+           (feGaussianBlur), żeby przesunięcie zmieniało się płynnie. Niska
+           częstotliwość = duże pętle, duży scale = wyraźna amplituda (Wiggle). */}
+        <filter id="rough" x="-18%" y="-18%" width="136%" height="136%">
           <feTurbulence
             type="fractalNoise"
-            baseFrequency="0.018"
-            numOctaves={2}
+            baseFrequency="0.008"
+            numOctaves={1}
             seed={7}
             result="noise"
           />
-          <feDisplacementMap in="SourceGraphic" in2="noise" scale={2.6} />
+          <feGaussianBlur in="noise" stdDeviation={1.6} result="smooth" />
+          <feDisplacementMap in="SourceGraphic" in2="smooth" scale={8} />
         </filter>
 
         {/* mocniejsze — duże kształty, ilustracje, podłoża */}
@@ -37,16 +41,18 @@ export function RoughDefs() {
           <feDisplacementMap in="SourceGraphic" in2="noise" scale={4} />
         </filter>
 
-        {/* linie/krzywe dividery — cienkie ślady długopisu */}
-        <filter id="rough-line" x="-4%" y="-30%" width="108%" height="160%">
+        {/* linie/krzywe dividery i podkreślenia — ten sam gładki (rozmyty szum),
+           luźny charakter co obwódki (spójność „krzywych linii" w całym UI). */}
+        <filter id="rough-line" x="-8%" y="-120%" width="116%" height="340%">
           <feTurbulence
             type="fractalNoise"
-            baseFrequency="0.03"
-            numOctaves={2}
+            baseFrequency="0.008"
+            numOctaves={1}
             seed={3}
             result="noise"
           />
-          <feDisplacementMap in="SourceGraphic" in2="noise" scale={2.2} />
+          <feGaussianBlur in="noise" stdDeviation={1.4} result="smooth" />
+          <feDisplacementMap in="SourceGraphic" in2="smooth" scale={5} />
         </filter>
       </defs>
     </svg>

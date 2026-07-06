@@ -271,14 +271,13 @@ export function rankTips(logs: DayLog[]): Tip[] {
     active.add("ritual");
   }
 
-  // miauczenie: 3 nocne / 4 pod drzwiami / 5 o jedzenie → nawyk
+  // miauczenie: dużo/bardzo dużo (2–3) → nawyk, prawdopodobnie nocny/domaganie się
   const vocal = vals("vocal");
-  if (vocal.some((v) => v === 5)) active.add("begging");
-  if (vocal.some((v) => v === 3 || v === 4)) {
-    active.add("night");
+  const vMode = mode(vocal);
+  if (vMode != null && vMode >= 2) {
     active.add("begging");
+    active.add("night");
   }
-  if (mode(vocal) === 2) active.add("begging"); // miauczy „więcej”
 
   // aktywność: brak/mało → activity
   const akt = vals("aktywnosc");

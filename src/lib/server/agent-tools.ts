@@ -26,7 +26,7 @@ export const makeSearchDiaryTool = (userId: string) =>
     "Przeszukaj dziennik kota i znajdź najtrafniejsze wpisy do pytania właściciela " +
     "(hybrydowo: znaczenie + słowa kluczowe). Używaj, gdy potrzebujesz konkretnych " +
     "obserwacji z przeszłości (np. epizody, objawy, reakcje na zabawę). " +
-    "Opcjonalnie zawęź po metrykach (min/max): aktywnosc 0–3, apetyt 0–2, vocal 0–5, zabawa 0–2.",
+    "Opcjonalnie zawęź po metrykach (min/max): aktywnosc 0–3, apetyt 0–3, vocal 0–3, zabawa 0–3.",
   parameters: z.object({
     query: z.string().describe("Czego szukać, np. 'wymioty po jedzeniu'."),
     filters: z

@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { Icon } from "@/components/Icon";
 import { Button } from "@/components/ui/button";
-import { HandUnderline } from "@/components/Squiggle";
+import { Art } from "@/components/Illustration";
+import { RoughBorder } from "@/components/RoughBorder";
 import { useAuth } from "@/context/AuthContext";
 
 type Mode = "signin" | "signup";
@@ -46,14 +47,13 @@ export function Auth() {
   return (
     <div className="flex min-h-[100dvh] justify-center overflow-y-auto p-4">
       <div className="mt-10 w-full max-w-[420px]">
-        <div className="flex flex-col items-center gap-3 text-center">
-          <span className="tag">cześć!</span>
-          <div className="sketch-box sketch-box-alt my-2" aria-hidden="true">
-            <Icon name="cat" size={88} strokeWidth={1.6} />
+        <div className="flex flex-col items-center gap-1 text-center">
+          <h1 className="font-hand text-[3.25rem] font-bold lowercase leading-none">kotek</h1>
+          <p className="mt-1 text-sm text-ink-soft">Twój wirtualny koci behawiorysta</p>
+          <div className="my-2 w-full" aria-hidden="true">
+            <Art name="miauczenie" fluid className="mx-auto w-full max-w-[360px]" />
           </div>
-          <h1 className="text-[2.25rem] leading-none">Kotek</h1>
-          <HandUnderline width={132} />
-          <p className="mt-1 max-w-[34ch] text-sm text-ink-soft">
+          <p className="max-w-[34ch] text-sm text-ink-soft">
             {isSignup
               ? "Załóż konto, aby zapisywać wpisy o swoim kocie."
               : "Zaloguj się, aby wrócić do dziennika kota."}
@@ -63,7 +63,8 @@ export function Auth() {
         <form onSubmit={submit} className="mt-7 flex flex-col gap-3">
           <label className="flex flex-col gap-1.5">
             <span className="font-hand text-sm font-semibold text-ink-soft">E-mail</span>
-            <div className="ink-edge rounded-[var(--r-box)] bg-paper focus-within:outline focus-within:outline-[2.5px] focus-within:outline-dashed focus-within:outline-ink focus-within:outline-offset-[3px]">
+            <div className="relative rounded-[14px] bg-paper focus-within:outline focus-within:outline-[2.5px] focus-within:outline-dashed focus-within:outline-ink focus-within:outline-offset-[3px]">
+              <RoughBorder radius={14} wavelength={22} amplitude={2.2} />
               <input
                 type="email"
                 autoComplete="email"
@@ -78,7 +79,8 @@ export function Auth() {
 
           <label className="flex flex-col gap-1.5">
             <span className="font-hand text-sm font-semibold text-ink-soft">Hasło</span>
-            <div className="ink-edge rounded-[var(--r-box)] bg-paper focus-within:outline focus-within:outline-[2.5px] focus-within:outline-dashed focus-within:outline-ink focus-within:outline-offset-[3px]">
+            <div className="relative rounded-[14px] bg-paper focus-within:outline focus-within:outline-[2.5px] focus-within:outline-dashed focus-within:outline-ink focus-within:outline-offset-[3px]">
+              <RoughBorder radius={14} wavelength={22} amplitude={2.2} />
               <input
                 type="password"
                 autoComplete={isSignup ? "new-password" : "current-password"}
@@ -100,8 +102,8 @@ export function Auth() {
             {busy ? "Chwila…" : isSignup ? "Załóż konto" : "Zaloguj się"}
           </Button>
 
-          <Button type="button" variant="ghost" block onClick={toggleMode}>
-            {isSignup ? "Masz już konto? Zaloguj się" : "Nie masz konta? Załóż konto"}
+          <Button type="button" variant="secondary" size="lg" block onClick={toggleMode}>
+            {isSignup ? "Masz już konto? Zaloguj się" : "Pierwszy raz? Załóż konto"}
           </Button>
         </form>
 

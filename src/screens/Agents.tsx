@@ -44,12 +44,20 @@ export function Agents() {
 
   return (
     <div className="flex flex-col gap-5 pt-2">
-      <header>
-        <h1 className="text-2xl">Agenci</h1>
-        <p className="mt-1 text-sm text-ink-soft">
-          Wybierz, z kim rozmawiasz w zakładce Behawiorysta. Wersje PRO odblokowujesz raz — zostają na zawsze.
-        </p>
+      <header className="flex items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          aria-label="Wstecz"
+          className="-ml-1 inline-flex h-9 w-9 shrink-0 items-center justify-center text-ink active:opacity-60"
+        >
+          <Icon name="arrowRight" size={22} className="rotate-180" />
+        </button>
+        <h1 className="text-2xl leading-tight text-right">Agenci</h1>
       </header>
+      <p className="-mt-2 text-sm text-ink-soft">
+        Wybierz, z kim rozmawiasz w zakładce Behawiorysta. Wersje PRO odblokowujesz raz — zostają na zawsze.
+      </p>
 
       {justPaid && (
         <div

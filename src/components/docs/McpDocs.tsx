@@ -102,9 +102,9 @@ Nagłówek:  Authorization: Bearer ${bearer}`}</Code>
               Cztery metryki (liczby całkowite):
               <ul className="mt-1.5 list-disc pl-5">
                 <li><code>aktywnosc</code> 0–3 — Brak / Mało / Jak zwykle / Dużo</li>
-                <li><code>apetyt</code> 0–2 — Mniej / Jak zwykle / Więcej</li>
-                <li><code>vocal</code> 0–5 — Mniej / Jak zwykle / Więcej / Nocne / Pod drzwiami / O jedzenie</li>
-                <li><code>zabawa</code> 0–2 — Brak / Krótko / Dobra sesja</li>
+                <li><code>apetyt</code> 0–3 — Słaby / Umiarkowany / Większy / Wilczy głód</li>
+                <li><code>vocal</code> 0–3 — Brak / Trochę / Dużo / Bardzo dużo</li>
+                <li><code>zabawa</code> 0–3 — Brak / Trochę / Dobra sesja / Super, kilka razy</li>
               </ul>
             </Field>
             <Field name="note" type="string | null · opcjonalne">
