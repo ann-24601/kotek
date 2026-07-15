@@ -2,14 +2,15 @@
    Kotek — wpisy dziennika z aplikacji (per-user). Źródło prawdy = Strapi.
    GET    = wszystkie wpisy zalogowanego użytkownika (ekran dziennika).
    POST   = batchowy, nieniszczący upsert dni (zapis do Strapi).
-   DELETE = wyczyszczenie wszystkich wpisów użytkownika (reset onboardingu).
+   DELETE = wyczyszczenie wszystkich wpisów użytkownika (reset onboardingu)
+            lub jednego dnia przy `?date=YYYY-MM-DD`.
    Autoryzacja: Authorization: Bearer <access_token sesji Supabase>.
    Embedding/entry_index domyka webhook Strapi (zob. /api/strapi-sync).
    ============================================================= */
 import { adminClient } from "@/lib/server/admin";
 import { requireUser } from "@/lib/server/auth";
 import { listEntries, upsertEntries } from "@/lib/server/journal";
-import { deleteWpis, listWpisy } from "@/lib/server/strapi";
+import { deleteWpis, getWpis, listWpisy } from "@/lib/server/strapi";
 import type { DayLog } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -82,7 +83,29 @@ export async function DELETE(req: Request) {
   const auth = await requireUser(req);
   if (auth instanceof Response) return auth;
 
+  // `?date=YYYY-MM-DD` usuwa pojedynczy dzień; bez parametru — wszystkie wpisy (reset).
+  const date = new URL(req.url).searchParams.get("date");
+  if (date !== null && !ISO_DATE.test(date)) {
+    return Response.json(
+      { error: "Parametr 'date' musi mieć format YYYY-MM-DD." },
+      { status: 400 },
+    );
+  }
+
   try {
+    if (date) {
+      const wpis = await getWpis(auth.userId, date);
+      if (wpis) await deleteWpis(wpis.documentId);
+      const sb = adminClient();
+      const { error } = await sb
+        .from("entry_index")
+        .delete()
+        .eq("user_id", auth.userId)
+        .eq("date", date);
+      if (error) throw error;
+      return Response.json({ ok: true, deleted: wpis ? 1 : 0 });
+    }
+
     // Usuń wpisy ze Strapi (lifecycle webhook dosprząta entry_index)...
     const wpisy = await listWpisy(auth.userId);
     for (const w of wpisy) await deleteWpis(w.documentId);

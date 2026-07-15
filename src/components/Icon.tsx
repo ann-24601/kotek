@@ -44,6 +44,7 @@ export type IconName =
   | "note"
   | "gender"
   | "scissors"
+  | "camera"
   | "agents";
 
 interface IconProps {
@@ -303,6 +304,13 @@ const PATHS: Record<IconName, JSX.Element> = {
     <g fill="none">
       <path d="M6 3.5 L18 3.5 C18.6 3.5 19 4 19 4.6 L19 20 L5 20 L5 4.6 C5 4 5.4 3.5 6 3.5 Z" />
       <path d="M8 8 H16 M8 11.5 H16 M8 15 H13" strokeWidth={1.4} />
+    </g>
+  ),
+  camera: (
+    <g fill="none">
+      <path d="M3.5 8 C3.5 7.2 4.1 6.6 4.9 6.6 L8 6.5 L9.4 4.6 L14.6 4.6 L16 6.5 L19.1 6.6 C19.9 6.6 20.5 7.2 20.5 8 L20.4 18 C20.4 18.8 19.8 19.4 19 19.4 L5 19.4 C4.2 19.4 3.6 18.8 3.6 18 Z" />
+      <circle cx={12} cy={12.6} r={3.6} />
+      <path d="M17.6 9.2 h0.01" strokeWidth={2.4} />
     </g>
   ),
   gender: (

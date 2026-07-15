@@ -9,7 +9,7 @@ import { Squiggle } from "@/components/Squiggle";
 import { useCat } from "@/context/CatContext";
 import { useAuth } from "@/context/AuthContext";
 import { Onboarding } from "@/screens/Onboarding";
-import { Auth } from "@/screens/Auth";
+import { Auth, PasswordRecovery } from "@/screens/Auth";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -28,6 +28,17 @@ function isActive(pathname: string, href: string) {
   return href === "/" ? pathname === "/" : pathname.startsWith(href);
 }
 
+function LoadingScreen() {
+  return (
+    <div className="grid h-[100dvh] place-items-center">
+      <div className="flex flex-col items-center gap-2 text-ink-faint">
+        <Icon name="cat" size={44} />
+        <span className="font-hand text-lg font-semibold">Wczytuję…</span>
+      </div>
+    </div>
+  );
+}
+
 function Logo() {
   return (
     <div className="flex items-center gap-2">
@@ -41,7 +52,7 @@ function Logo() {
 
 export function AppFrame({ children }: { children: ReactNode }) {
   const { loaded, profile } = useCat();
-  const { loading: authLoading, session } = useAuth();
+  const { loading: authLoading, session, recovery } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
 
@@ -51,19 +62,20 @@ export function AppFrame({ children }: { children: ReactNode }) {
   }
 
   if (authLoading) {
-    return (
-      <div className="grid h-[100dvh] place-items-center text-ink-faint">Wczytuję…</div>
-    );
+    return <LoadingScreen />;
   }
 
   if (!session) {
     return <Auth />;
   }
 
+  // wejście z linku „resetuj hasło" — najpierw nowe hasło, potem reszta appki
+  if (recovery) {
+    return <PasswordRecovery />;
+  }
+
   if (!loaded) {
-    return (
-      <div className="grid h-[100dvh] place-items-center text-ink-faint">Wczytuję…</div>
-    );
+    return <LoadingScreen />;
   }
 
   if (!profile) {
@@ -75,9 +87,9 @@ export function AppFrame({ children }: { children: ReactNode }) {
     return <>{children}</>;
   }
 
-  const isSettings = pathname.startsWith("/ustawienia");
   // podstrony z własnym nagłówkiem „wstecz + nazwa" nie potrzebują górnego paska powłoki
-  const hideTopHeader = isSettings || pathname.startsWith("/agenci");
+  const hideTopHeader = pathname.startsWith("/ustawienia") || pathname.startsWith("/agenci");
+  const hasFab = pathname === "/" || pathname.startsWith("/historia");
 
   return (
     <div className="flex h-[100dvh] overflow-hidden">
@@ -137,20 +149,25 @@ export function AppFrame({ children }: { children: ReactNode }) {
         )}
 
         <main className="min-h-0 flex-1 overflow-y-auto" id="tresc">
-          <div className="mx-auto max-w-[720px] px-4 py-4 pb-8 lg:px-6 lg:py-8">
+          <div
+            className={cn(
+              "mx-auto max-w-[720px] px-4 py-4 pb-8 lg:px-6 lg:py-8",
+              // pływający „Dodaj wpis" nie może zasłaniać końca treści
+              hasFab && "pb-24 lg:pb-28",
+            )}
+          >
             {children}
           </div>
         </main>
 
         {/* Floating „Dodaj wpis" — na Dzisiaj i Historii */}
-        {(pathname === "/" || pathname.startsWith("/historia")) && <AddEntryButton />}
+        {hasFab && <AddEntryButton />}
 
-        {/* Dolna nawigacja — mobile */}
-        {!isSettings && (
-          <nav
-            className="relative flex shrink-0 px-1 pb-[calc(6px+env(safe-area-inset-bottom,0px))] pt-2 lg:hidden"
-            aria-label="Nawigacja główna"
-          >
+        {/* Dolna nawigacja — mobile (także na ustawieniach — spójna nawigacja) */}
+        <nav
+          className="relative flex shrink-0 px-1 pb-[calc(6px+env(safe-area-inset-bottom,0px))] pt-2 lg:hidden"
+          aria-label="Nawigacja główna"
+        >
             <Squiggle tone="ink" strokeWidth={2.2} className="absolute inset-x-0 top-0" />
             {NAV.map((item) => {
               const active = isActive(pathname, item.href);
@@ -175,8 +192,7 @@ export function AppFrame({ children }: { children: ReactNode }) {
                 </Link>
               );
             })}
-          </nav>
-        )}
+        </nav>
       </div>
     </div>
   );

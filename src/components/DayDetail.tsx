@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Icon } from "@/components/Icon";
 import { Button } from "@/components/ui/button";
 import { RoughBorder } from "@/components/RoughBorder";
@@ -8,6 +10,7 @@ import { PhotoThumbs } from "@/components/PhotoUploader";
 import { METRICS } from "@/lib/constants";
 import { fmtLong } from "@/lib/dates";
 import { sanitizeNoteHtml } from "@/lib/sanitize";
+import { useCat } from "@/context/CatContext";
 import type { DayLog } from "@/lib/types";
 
 /** notatki są HTML (TipTap) — do listy pokazujemy czysty tekst */
@@ -28,6 +31,9 @@ export function optLabel(key: keyof DayLog["m"], v: number | undefined): string 
 
 /** modal ze szczegółami pojedynczego dnia (wpis dziennika) */
 export function DayDetail({ log, onClose }: { log: DayLog; onClose: () => void }) {
+  const router = useRouter();
+  const { deleteLog } = useCat();
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const hasNote = Boolean(log.note && stripHtml(log.note).length > 0);
   return (
     <div
@@ -77,7 +83,54 @@ export function DayDetail({ log, onClose }: { log: DayLog; onClose: () => void }
             </div>
           ))}
         </div>
+
+        <div className="mt-4 flex gap-2.5">
+          <Button
+            variant="secondary"
+            className="flex-1"
+            onClick={() => router.push(`/dodaj-wpis?date=${log.date}`)}
+          >
+            <Icon name="edit" size={18} />
+            Edytuj
+          </Button>
+          <Button variant="ghost" className="flex-1" onClick={() => setConfirmDelete(true)}>
+            <Icon name="close" size={18} />
+            Usuń wpis
+          </Button>
         </div>
+        </div>
+
+        {confirmDelete && (
+          <div
+            className="absolute inset-0 z-10 flex items-center justify-center rounded-[16px] bg-black/40 p-4"
+            role="dialog"
+            aria-modal="true"
+            onClick={() => setConfirmDelete(false)}
+          >
+            <div
+              className="ink-edge ink-edge--soft w-full max-w-[320px] rounded-[var(--r-box-2)] bg-paper p-5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <p className="font-hand text-lg font-semibold">Usunąć wpis z tego dnia?</p>
+              <p className="mt-1 text-sm text-ink-faint">Notatka i metryki znikną z dziennika. Tej operacji nie można cofnąć.</p>
+              <div className="mt-4 flex gap-2.5">
+                <Button variant="secondary" className="flex-1" onClick={() => setConfirmDelete(false)}>
+                  Zostaw
+                </Button>
+                <Button
+                  variant="danger"
+                  className="flex-1"
+                  onClick={() => {
+                    deleteLog(log.date);
+                    onClose();
+                  }}
+                >
+                  Usuń
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

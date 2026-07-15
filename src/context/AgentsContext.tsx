@@ -79,6 +79,18 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
     void refetch();
   }, [refetch]);
 
+  // Powrót do karty (np. „wstecz" z checkoutu Stripe) → odśwież uprawnienia,
+  // żeby świeżo kupiony agent odblokował się bez przeładowania strony.
+  useEffect(() => {
+    const onFocus = () => void refetch();
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+    };
+  }, [refetch]);
+
   const hasAgent = useCallback(
     (agentId: string) => !isPaidAgent(agentId) || owned.has(agentId),
     [owned],

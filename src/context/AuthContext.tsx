@@ -19,9 +19,14 @@ interface AuthState {
   loading: boolean;
   session: Session | null;
   user: User | null;
+  /** true po wejściu z linku „resetuj hasło" — pokaż formularz nowego hasła */
+  recovery: boolean;
   signUp: (email: string, password: string) => Promise<AuthResult>;
   signIn: (email: string, password: string) => Promise<AuthResult>;
   signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<AuthResult>;
+  updatePassword: (password: string) => Promise<AuthResult>;
+  clearRecovery: () => void;
 }
 
 const Ctx = createContext<AuthState | null>(null);
@@ -29,6 +34,7 @@ const Ctx = createContext<AuthState | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState<Session | null>(null);
+  const [recovery, setRecovery] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -51,8 +57,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (active) setLoading(false);
     })();
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
+      if (event === "PASSWORD_RECOVERY") setRecovery(true);
     });
 
     return () => {
@@ -66,6 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       session,
       user: session?.user ?? null,
+      recovery,
       signUp: async (email, password) => {
         const { error } = await supabase.auth.signUp({ email, password });
         return { error: error?.message ?? null };
@@ -77,8 +85,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut: async () => {
         await supabase.auth.signOut();
       },
+      resetPassword: async (email) => {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: typeof window !== "undefined" ? window.location.origin : undefined,
+        });
+        return { error: error?.message ?? null };
+      },
+      updatePassword: async (password) => {
+        const { error } = await supabase.auth.updateUser({ password });
+        if (!error) setRecovery(false);
+        return { error: error?.message ?? null };
+      },
+      clearRecovery: () => setRecovery(false),
     }),
-    [loading, session],
+    [loading, session, recovery],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

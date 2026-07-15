@@ -10,27 +10,56 @@ import { useAuth } from "@/context/AuthContext";
 import { useAgents } from "@/context/AgentsContext";
 import { useCat } from "@/context/CatContext";
 import { getAgent } from "@/lib/agents/registry";
+import { genitiveCatName } from "@/lib/polish";
 import type { ChatMessage } from "@/lib/types";
 import { cn } from "@/lib/utils";
+
+/* rozmowa przeżywa nawigację między zakładkami (w ramach karty przeglądarki) */
+const CHAT_STORAGE_KEY = "kotek-chat";
+
+function loadStoredMsgs(): ChatMessage[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.sessionStorage.getItem(CHAT_STORAGE_KEY);
+    const parsed = raw ? (JSON.parse(raw) as ChatMessage[]) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
 
 export function Chat() {
   const { profile, playProfile, pillars, logs } = useCat();
   const { session } = useAuth();
   const { selectedAgentId } = useAgents();
   const agent = getAgent(selectedAgentId);
-  const name = profile?.name ?? "kota";
+  const name = profile?.name ?? "kot";
 
   const [msgs, setMsgs] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
 
+  // wczytanie po montażu (nie w inicjalizatorze stanu) — SSR nie zna sessionStorage
+  useEffect(() => {
+    const stored = loadStoredMsgs();
+    if (stored.length > 0) setMsgs(stored);
+  }, []);
+
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [msgs, busy]);
 
+  useEffect(() => {
+    try {
+      window.sessionStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(msgs));
+    } catch {
+      /* pełny storage nie może blokować rozmowy */
+    }
+  }, [msgs]);
+
   const suggestions = [
-    `Jak wybawić dzisiaj ${name}?`,
+    `Jak wybawić dzisiaj ${genitiveCatName(name)}?`,
     "Jak przerwać miauczenie o jedzenie?",
     "Co mówią dane z ostatnich dni?",
     "Dobrze urządzone środowisko",
@@ -75,10 +104,30 @@ export function Chat() {
     }
   };
 
+  const newChat = () => {
+    setMsgs([]);
+    try {
+      window.sessionStorage.removeItem(CHAT_STORAGE_KEY);
+    } catch {
+      /* ignore */
+    }
+  };
+
   return (
     <div className="flex min-h-full flex-col pt-1">
-      <div className="mb-3 flex justify-center">
+      <div className="relative mb-3 flex items-center justify-center">
         <AgentToggle />
+        {msgs.length > 0 && (
+          <button
+            type="button"
+            onClick={newChat}
+            className="absolute right-0 inline-flex min-h-9 items-center gap-1.5 font-hand text-sm font-semibold text-ink-soft hover:text-ink"
+            aria-label="Zacznij nową rozmowę"
+          >
+            <Icon name="plus" size={16} />
+            <span className="hidden sm:inline">Nowa rozmowa</span>
+          </button>
+        )}
       </div>
       <div className="flex flex-1 flex-col gap-3 overflow-y-auto pb-4" role="log" aria-live="polite">
         {msgs.length === 0 && (
@@ -140,11 +189,23 @@ export function Chat() {
       <div className="sticky bottom-0 flex gap-2 bg-paper py-3">
         <div className="relative flex-1 rounded-[14px] bg-paper focus-within:outline focus-within:outline-[2.5px] focus-within:outline-dashed focus-within:outline-ink focus-within:outline-offset-[3px]">
           <RoughBorder radius={14} wavelength={22} amplitude={2.2} />
-          <input
-            className="min-h-11 w-full rounded-[var(--r-box)] bg-transparent px-3.5 py-3 text-base text-ink placeholder:text-ink-faint focus:outline-none"
+          <textarea
+            className="block max-h-40 min-h-11 w-full resize-none rounded-[var(--r-box)] bg-transparent px-3.5 py-3 text-base leading-snug text-ink placeholder:text-ink-faint focus:outline-none"
+            rows={1}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && send()}
+            onChange={(e) => {
+              setInput(e.target.value);
+              // auto-rozrost do treści (do max-h)
+              e.target.style.height = "auto";
+              e.target.style.height = `${e.target.scrollHeight}px`;
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                send();
+                (e.target as HTMLTextAreaElement).style.height = "auto";
+              }
+            }}
             placeholder="Napisz wiadomość…"
             aria-label="Treść wiadomości"
           />

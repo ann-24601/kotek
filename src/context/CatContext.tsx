@@ -22,6 +22,7 @@ interface CatState {
   savePillars: (p: Pillars) => void;
   savePlayProfile: (p: PlayProfile) => void;
   saveLogs: (l: DayLog[]) => void;
+  deleteLog: (date: string) => void;
   resetAll: () => void;
 }
 
@@ -165,6 +166,32 @@ export function CatProvider({ children }: { children: ReactNode }) {
             }
           } catch (err) {
             console.error("Zapis wpisów nie powiódł się:", err);
+          }
+        })();
+      },
+      deleteLog: (date) => {
+        setLogs((cur) => cur.filter((l) => l.date !== date)); // optymistycznie
+        if (!userId) return;
+        void (async () => {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+          const token = session?.access_token;
+          if (!token) {
+            console.error("Usunięcie wpisu nie powiodło się: brak aktywnej sesji.");
+            return;
+          }
+          try {
+            const res = await fetch(`/api/entries?date=${encodeURIComponent(date)}`, {
+              method: "DELETE",
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!res.ok) {
+              const detail = (await res.json().catch(() => ({}))) as { error?: string };
+              console.error("Usunięcie wpisu nie powiodło się:", detail.error ?? res.status);
+            }
+          } catch (err) {
+            console.error("Usunięcie wpisu nie powiodło się:", err);
           }
         })();
       },
