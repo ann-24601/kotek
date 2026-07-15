@@ -77,14 +77,9 @@ export const FIELD_ICONS = {
 
 const fieldCls = "min-w-0 border-0 p-0";
 
-/* legenda z ikoną — spójny wygląd etykiet pól */
-function FieldLegend({ icon, children }: { icon: IconName; children: ReactNode }) {
-  return (
-    <legend className="mb-2 flex items-center gap-1.5 p-0 font-hand text-sm font-semibold">
-      <Icon name={icon} size={20} />
-      {children}
-    </legend>
-  );
+/* etykieta pola — czysta, jak w formularzu „Dodaj wpis" (ikony noszą nagłówki sekcji) */
+function FieldLegend({ children }: { children: ReactNode }) {
+  return <legend className="mb-2 p-0 font-hand text-base font-semibold">{children}</legend>;
 }
 
 /* --- wspólny stan formularza --- */
@@ -164,8 +159,7 @@ export function ProfileFields({ v, set }: { v: CatFormValues; set: Patch }) {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <label className="mb-2 flex items-center gap-1.5 p-0 font-hand text-sm font-semibold" htmlFor="name">
-          <Icon name="cat" size={20} />
+        <label className="mb-2 block p-0 font-hand text-base font-semibold" htmlFor="name">
           Imię kota
         </label>
         <div className="ink-edge rounded-[var(--r-box)] bg-paper focus-within:outline focus-within:outline-[2.5px] focus-within:outline-dashed focus-within:outline-ink focus-within:outline-offset-[3px]">
@@ -181,7 +175,7 @@ export function ProfileFields({ v, set }: { v: CatFormValues; set: Patch }) {
       </div>
 
       <fieldset className={fieldCls}>
-        <FieldLegend icon="sparkle">Awatar</FieldLegend>
+        <FieldLegend>Awatar</FieldLegend>
         <div className="flex flex-wrap gap-2">
           {AVATARS.map((a) => (
             <button
@@ -203,7 +197,7 @@ export function ProfileFields({ v, set }: { v: CatFormValues; set: Patch }) {
 
       <div className="grid grid-cols-2 gap-4 max-[420px]:grid-cols-1">
         <fieldset className={fieldCls}>
-          <FieldLegend icon={FIELD_ICONS.sex}>Płeć</FieldLegend>
+          <FieldLegend>Płeć</FieldLegend>
           <div className="flex flex-wrap gap-2">
             {SEX.map((s) => (
               <ToggleChip key={s.v} selected={v.sex === s.v} onClick={() => set({ sex: s.v })}>
@@ -213,7 +207,7 @@ export function ProfileFields({ v, set }: { v: CatFormValues; set: Patch }) {
           </div>
         </fieldset>
         <fieldset className={fieldCls}>
-          <FieldLegend icon={FIELD_ICONS.indoor}>Tryb życia</FieldLegend>
+          <FieldLegend>Tryb życia</FieldLegend>
           <div className="flex flex-wrap gap-2">
             {(["domowy", "wychodzący"] as LifeMode[]).map((s) => (
               <ToggleChip key={s} selected={v.indoor === s} onClick={() => set({ indoor: s })}>
@@ -225,7 +219,7 @@ export function ProfileFields({ v, set }: { v: CatFormValues; set: Patch }) {
       </div>
 
       <fieldset className={fieldCls}>
-        <FieldLegend icon={FIELD_ICONS.neutered}>Sterylizacja / kastracja</FieldLegend>
+        <FieldLegend>Sterylizacja / kastracja</FieldLegend>
         <div className="flex flex-wrap gap-2">
           {([
             [true, "Tak"],
@@ -239,7 +233,7 @@ export function ProfileFields({ v, set }: { v: CatFormValues; set: Patch }) {
       </fieldset>
 
       <fieldset className={fieldCls}>
-        <FieldLegend icon={FIELD_ICONS.multi}>Inne zwierzęta w domu</FieldLegend>
+        <FieldLegend>Inne zwierzęta w domu</FieldLegend>
         <ToggleChip selected={v.multi} onClick={() => set({ multi: !v.multi })} className="self-start">
           {v.multi && <Icon name="check" size={16} />}
           Mieszka z innymi zwierzętami
@@ -257,7 +251,7 @@ export function PlayFields({ v, set }: { v: CatFormValues; set: Patch }) {
   return (
     <div className="flex flex-col gap-4">
       <fieldset className={fieldCls}>
-        <FieldLegend icon={FIELD_ICONS.huntingStyle}>Styl łowiecki</FieldLegend>
+        <FieldLegend>Styl łowiecki</FieldLegend>
         <div className="flex flex-col gap-2">
           {HUNTING.map((h) => (
             <ToggleChip
@@ -274,7 +268,7 @@ export function PlayFields({ v, set }: { v: CatFormValues; set: Patch }) {
       </fieldset>
 
       <fieldset className={fieldCls}>
-        <FieldLegend icon={FIELD_ICONS.temperament}>Temperament</FieldLegend>
+        <FieldLegend>Temperament</FieldLegend>
         <div className="flex flex-wrap gap-2">
           {TEMPER.map((t) => (
             <ToggleChip
@@ -289,7 +283,7 @@ export function PlayFields({ v, set }: { v: CatFormValues; set: Patch }) {
       </fieldset>
 
       <fieldset className={fieldCls}>
-        <FieldLegend icon={FIELD_ICONS.engagement}>Chęć do zabawy</FieldLegend>
+        <FieldLegend>Chęć do zabawy</FieldLegend>
         <div className="flex flex-wrap gap-2">
           {ENGAGE.map((e) => (
             <ToggleChip
@@ -304,7 +298,7 @@ export function PlayFields({ v, set }: { v: CatFormValues; set: Patch }) {
       </fieldset>
 
       <fieldset className={fieldCls}>
-        <FieldLegend icon={FIELD_ICONS.toyPrefs}>Co lubi? (możesz zaznaczyć kilka)</FieldLegend>
+        <FieldLegend>Co lubi? (możesz zaznaczyć kilka)</FieldLegend>
         <div className="flex flex-wrap gap-2">
           {TOYS.map((t) => (
             <ToggleChip key={t} selected={v.toyPrefs.includes(t)} onClick={() => toggleToy(t)}>
@@ -315,7 +309,7 @@ export function PlayFields({ v, set }: { v: CatFormValues; set: Patch }) {
       </fieldset>
 
       <fieldset className={fieldCls}>
-        <FieldLegend icon={FIELD_ICONS.nightWaking}>Budzi Cię w nocy lub nad ranem?</FieldLegend>
+        <FieldLegend>Budzi Cię w nocy lub nad ranem?</FieldLegend>
         <div className="flex flex-wrap gap-2">
           {NIGHT.map(({ v: nv, l }) => (
             <ToggleChip key={nv} selected={v.nightWaking === nv} onClick={() => set({ nightWaking: nv })}>
@@ -329,11 +323,14 @@ export function PlayFields({ v, set }: { v: CatFormValues; set: Patch }) {
   );
 }
 
-/* ---------- notatka o kocie ---------- */
+/* ---------- notatka o kocie (nagłówek sekcji jak w „Dodaj wpis") ---------- */
 export function NotesField({ v, set }: { v: CatFormValues; set: Patch }) {
   return (
     <fieldset className={fieldCls}>
-      <FieldLegend icon="note">Notatki o kocie</FieldLegend>
+      <legend className="mb-1 flex items-center gap-2.5 p-0 font-hand text-xl font-semibold">
+        <Icon name="note" size={22} />
+        Notatki o kocie
+      </legend>
       <p className="mb-2 text-xs text-ink-faint">
         Rasa, choroby przewlekłe, charakter — to kontekst dla porad.
       </p>
@@ -342,6 +339,7 @@ export function NotesField({ v, set }: { v: CatFormValues; set: Patch }) {
         onChange={(html) => set({ notes: html })}
         placeholder="np. brytyjczyk, 9 lat, nadczynność tarczycy…"
         ariaLabel="Notatki o kocie"
+        simple
       />
     </fieldset>
   );

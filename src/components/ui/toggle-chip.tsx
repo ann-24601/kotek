@@ -43,7 +43,8 @@ export function ToggleChip({
       className={cn(chipVariants({ tone, selected }), borderCls, className)}
       {...props}
     >
-      <span className="relative">{children}</span>
+      {/* inline-flex: ikony (svg ma z preflightu display:block) nie łamią chipa na dwie linie */}
+      <span className="relative inline-flex items-center gap-1.5">{children}</span>
     </button>
   );
 }

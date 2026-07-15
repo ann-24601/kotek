@@ -11,6 +11,8 @@ interface NoteEditorProps {
   placeholder?: string;
   ariaLabel?: string;
   className?: string;
+  /** uproszczony pasek: bez nagłówków H1/H2 (np. szybka notatka dnia) */
+  simple?: boolean;
 }
 
 /* --- pojedynczy przycisk paska formatowania --- */
@@ -45,26 +47,30 @@ function TBtn({
   );
 }
 
-function Toolbar({ editor }: { editor: Editor }) {
+function Toolbar({ editor, simple }: { editor: Editor; simple?: boolean }) {
   return (
     <div className="flex flex-wrap items-center gap-0.5 border-b border-hairline px-2 py-1.5">
-      <TBtn
-        label="Nagłówek 1"
-        active={editor.isActive("heading", { level: 1 })}
-        onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-      >
-        H1
-      </TBtn>
-      <TBtn
-        label="Nagłówek 2"
-        active={editor.isActive("heading", { level: 2 })}
-        onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-      >
-        H2
-      </TBtn>
-      <span className="mx-1 select-none text-hairline" aria-hidden="true">
-        |
-      </span>
+      {!simple && (
+        <>
+          <TBtn
+            label="Nagłówek 1"
+            active={editor.isActive("heading", { level: 1 })}
+            onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+          >
+            H1
+          </TBtn>
+          <TBtn
+            label="Nagłówek 2"
+            active={editor.isActive("heading", { level: 2 })}
+            onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+          >
+            H2
+          </TBtn>
+          <span className="mx-1 select-none text-hairline" aria-hidden="true">
+            |
+          </span>
+        </>
+      )}
       <TBtn
         label="Pogrubienie"
         active={editor.isActive("bold")}
@@ -110,6 +116,7 @@ export function NoteEditor({
   placeholder = "Napisz notatkę…",
   ariaLabel,
   className,
+  simple,
 }: NoteEditorProps) {
   const editor = useEditor({
     immediatelyRender: false,
@@ -154,7 +161,7 @@ export function NoteEditor({
         className,
       )}
     >
-      {editor && <Toolbar editor={editor} />}
+      {editor && <Toolbar editor={editor} simple={simple} />}
       <div className="dotted relative rounded-b-[16px] px-3.5 py-3 [&_.tiptap]:min-h-[84px]">
         {editor && editor.isEmpty && (
           <span className="pointer-events-none absolute left-3.5 top-3 text-ink-faint">

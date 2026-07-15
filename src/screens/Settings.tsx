@@ -64,6 +64,7 @@ export function Settings() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<CatFormValues | null>(null);
   const [savedMsg, setSavedMsg] = useState("");
+  const [confirmReset, setConfirmReset] = useState(false);
 
   if (!profile) return null;
 
@@ -97,8 +98,20 @@ export function Settings() {
         <Squiggle className="opacity-70" />
         <p className="-mt-1 text-sm text-ink-soft">Zmień dane wprowadzone podczas powitania.</p>
 
+        <h2 className="flex items-center gap-2.5 font-hand text-xl font-semibold">
+          <Icon name="cat" size={22} />
+          Profil
+        </h2>
         <ProfileFields v={form} set={set} />
+
+        <Squiggle className="my-1 opacity-70" />
+        <h2 className="flex items-center gap-2.5 font-hand text-xl font-semibold">
+          <Icon name="feather" size={22} />
+          Jak {profile.name} się bawi?
+        </h2>
         <PlayFields v={form} set={set} />
+
+        <Squiggle className="my-1 opacity-70" />
         <NotesField v={form} set={set} />
 
         <div className="mt-3 flex justify-between gap-3">
@@ -170,31 +183,55 @@ export function Settings() {
             <Icon name="sparkle" size={19} />
             Wczytaj dane demo (21 dni)
           </Button>
-          <Button
-            variant="secondary"
-            block
-            onClick={() => {
-              if (
-                window.confirm(
-                  "Wyczyścić dziennik i zacząć od nowa? Profil i wpisy zostaną skasowane, a aplikacja wróci do powitania. Tej operacji nie można cofnąć.",
-                )
-              ) {
-                resetAll();
-              }
-            }}
-          >
-            <Icon name="close" size={19} />
+          <Button variant="danger" block onClick={() => setConfirmReset(true)}>
+            <Icon name="warn" size={19} />
             Wyczyść dziennik
           </Button>
         </section>
 
         <section className="flex flex-col gap-2">
           {user?.email && <p className="text-center text-sm text-ink-soft">Zalogowano jako: {user.email}</p>}
-          <Button variant="primary" block onClick={() => void signOut()}>
+          <Button variant="secondary" block onClick={() => void signOut()}>
             <Icon name="arrowRight" size={19} />
             Wyloguj
           </Button>
         </section>
+
+        {/* potwierdzenie czyszczenia — modal w stylu aplikacji zamiast window.confirm */}
+        {confirmReset && (
+          <div
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4"
+            role="dialog"
+            aria-modal="true"
+            onClick={() => setConfirmReset(false)}
+          >
+            <div
+              className="ink-edge ink-edge--soft w-full max-w-[360px] rounded-[var(--r-box-2)] bg-paper p-5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <p className="font-hand text-lg font-semibold">Wyczyścić dziennik i zacząć od nowa?</p>
+              <p className="mt-1 text-sm text-ink-faint">
+                Profil i wszystkie wpisy ({logs.length}) zostaną skasowane, a aplikacja wróci do
+                powitania. Tej operacji nie można cofnąć.
+              </p>
+              <div className="mt-4 flex gap-2.5">
+                <Button variant="secondary" className="flex-1" onClick={() => setConfirmReset(false)}>
+                  Anuluj
+                </Button>
+                <Button
+                  variant="danger"
+                  className="flex-1"
+                  onClick={() => {
+                    setConfirmReset(false);
+                    resetAll();
+                  }}
+                >
+                  Wyczyść wszystko
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

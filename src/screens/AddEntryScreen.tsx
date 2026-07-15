@@ -1,20 +1,18 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Icon } from "@/components/Icon";
+import { useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Icon, type IconName } from "@/components/Icon";
 import { Button } from "@/components/ui/button";
 import { ToggleChip } from "@/components/ui/toggle-chip";
-import { LabeledSlider } from "@/components/ui/labeled-slider";
 import { Squiggle } from "@/components/Squiggle";
-import { Art } from "@/components/Illustration";
 import { NoteEditor } from "@/components/NoteEditor";
 import { PhotoThumbs, PhotoUploader } from "@/components/PhotoUploader";
 import { removeDayPhoto } from "@/lib/photos";
 import { useCat } from "@/context/CatContext";
 import { useAuth } from "@/context/AuthContext";
 import { METRICS } from "@/lib/constants";
-import { todayStr } from "@/lib/dates";
+import { todayStr, daysAgo, fmt, fmtLong } from "@/lib/dates";
 import type { DayLog, DayMetrics } from "@/lib/types";
 
 interface ChipOption {
@@ -62,6 +60,29 @@ const OD_KIEDY_OPTS: ChipOption[] = [
   { v: "kilka_dni", l: "Kilka dni" },
   { v: "tydzien_plus", l: "> tygodnia" },
 ];
+const KIEDY_OPTS: ChipOption[] = [
+  { v: "noc", l: "Noc / nad ranem" },
+  { v: "przed_karmieniem", l: "Przed karmieniem" },
+  { v: "po_powrocie", l: "Po Twoim powrocie" },
+  { v: "caly_dzien", l: "Cały dzień" },
+];
+const ODMOWA_OPTS: ChipOption[] = [
+  { v: "nie_probowalam", l: "Nie próbowałam/em" },
+  { v: "patrzyl", l: "Patrzył, ale nie ruszył" },
+  { v: "odpuscil", l: "Podszedł i odpuścił" },
+  { v: "uciekl", l: "Uciekł / schował się" },
+];
+const POSILEK_OPTS: ChipOption[] = [
+  { v: "tak", l: "Tak" },
+  { v: "nie", l: "Nie" },
+];
+const INCYDENT_OPTS: ChipOption[] = [
+  { v: "drapanie", l: "Drapanie mebli" },
+  { v: "gryzienie", l: "Gryzienie" },
+  { v: "kuweta", l: "Załatwianie poza kuwetą" },
+  { v: "agresja", l: "Agresja / syczenie" },
+  { v: "wymioty", l: "Wymioty" },
+];
 
 type Values = Record<string, string | string[]>;
 
@@ -106,6 +127,45 @@ function ChipField({
   );
 }
 
+/* --- wartość metryki jako rząd chipów (zamiast suwaka): wszystkie opcje
+   widoczne, jeden tap ustawia, tap w zaznaczony cofa do „brak obserwacji" --- */
+function MetricChips({
+  metricKey,
+  value,
+  onChange,
+}: {
+  metricKey: keyof DayMetrics;
+  value: number | null;
+  onChange: (v: number | null) => void;
+}) {
+  const metric = METRICS.find((m) => m.key === metricKey)!;
+  return (
+    <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={metric.label}>
+      {metric.options.map((o) => (
+        <ToggleChip
+          key={o.v}
+          role="radio"
+          aria-checked={value === o.v}
+          selected={value === o.v}
+          onClick={() => onChange(value === o.v ? null : o.v)}
+        >
+          {o.l}
+        </ToggleChip>
+      ))}
+    </div>
+  );
+}
+
+/* --- nagłówek sekcji metryki z jej ikoną --- */
+function SectionHeading({ icon, children }: { icon: IconName; children: string }) {
+  return (
+    <h3 className="flex items-center gap-2.5 font-hand text-xl font-semibold">
+      <Icon name={icon} size={22} />
+      {children}
+    </h3>
+  );
+}
+
 /* --- składa strukturalną linię notatki z wybranych chipów sekcji --- */
 function composeLine(sectionLabel: string, groups: { label: string; options: ChipOption[]; values: Values; key: string }[]): string {
   const parts: string[] = [];
@@ -127,33 +187,71 @@ function appendNote(existing: string | undefined, line: string): string {
   return cur ? `${cur}${line}` : line;
 }
 
+/* Usuwa z notatki wcześniej wygenerowane linie strukturalne, żeby ponowny zapis
+   tego samego dnia nie doklejał duplikatów („Miauczenie · …" ×2). */
+function stripComposedLines(note: string): string {
+  return note.replace(/<p><strong>(Miauczenie|Zabawa|Apetyt|Incydenty)<\/strong> · .*?<\/p>/g, "");
+}
+
+/* wartości metryk dnia (null = nieustawiona) */
+type MetricDraft = Record<keyof DayMetrics, number | null>;
+
+function draftFromLog(log: DayLog | undefined): MetricDraft {
+  return Object.fromEntries(
+    METRICS.map((m) => [m.key, log?.m?.[m.key] ?? null]),
+  ) as MetricDraft;
+}
+
 export function AddEntryScreen() {
   const router = useRouter();
+  const params = useSearchParams();
   const { logs, saveLogs } = useCat();
   const { user } = useAuth();
   const today = todayStr();
-  const existing = logs.find((l) => l.date === today);
+  const yesterday = daysAgo(1);
 
-  const normal: DayMetrics = Object.fromEntries(METRICS.map((m) => [m.key, m.normal])) as DayMetrics;
-  const vocalMetric = METRICS.find((m) => m.key === "vocal")!;
-  const zabawaMetric = METRICS.find((m) => m.key === "zabawa")!;
-  const apetytMetric = METRICS.find((m) => m.key === "apetyt")!;
+  const paramDate = params.get("date");
+  const initialDate = paramDate && /^\d{4}-\d{2}-\d{2}$/.test(paramDate) && paramDate <= today ? paramDate : today;
+  const [date, setDate] = useState(initialDate);
+  const dateInputRef = useRef<HTMLInputElement>(null);
+  const customDate = date !== today && date !== yesterday;
+  const existing = logs.find((l) => l.date === date);
 
-  const [vocal, setVocal] = useState(existing?.m?.vocal ?? normal.vocal ?? 0);
-  const [zabawa, setZabawa] = useState(existing?.m?.zabawa ?? normal.zabawa ?? 0);
-  const [apetyt, setApetyt] = useState(existing?.m?.apetyt ?? normal.apetyt ?? 0);
+  const [draft, setDraft] = useState<MetricDraft>(() => draftFromLog(existing));
   const [values, setValues] = useState<Values>({});
   const [note, setNote] = useState("");
   const [photos, setPhotos] = useState<string[]>([]);
   const [confirmClose, setConfirmClose] = useState(false);
+  const [saved, setSaved] = useState(false);
 
+  // zmiana dnia = praca na wpisie innego dnia — wyzeruj szkic do stanu tego dnia
+  useEffect(() => {
+    setDraft(draftFromLog(logs.find((l) => l.date === date)));
+    setValues({});
+    setNote("");
+    setPhotos([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [date]);
+
+  const setMetric = (key: keyof DayMetrics, v: number | null) =>
+    setDraft((s) => ({ ...s, [key]: v }));
   const setField = (key: string, v: string | string[]) => setValues((s) => ({ ...s, [key]: v }));
 
+  // jeden tap: wszystkie metryki na normę tego kota — szybki wpis „bazowy"
+  const setAllNormal = () =>
+    setDraft(Object.fromEntries(METRICS.map((m) => [m.key, m.normal])) as MetricDraft);
+  const allNormal = METRICS.every((m) => draft[m.key] === m.normal);
+
+  /* progressive disclosure — pola szczegółowe tylko, gdy suwak coś sygnalizuje */
+  const apetytNormal = METRICS.find((m) => m.key === "apetyt")!.normal;
+  const showVocalDetails = draft.vocal != null && draft.vocal >= 1;
+  const showPlayDetails = draft.zabawa != null && draft.zabawa >= 1;
+  const showPlayRefusal = draft.zabawa === 0;
+  const showApetytDetails = draft.apetyt != null && draft.apetyt !== apetytNormal;
+
   const dirty =
-    vocal !== (existing?.m?.vocal ?? normal.vocal) ||
-    zabawa !== (existing?.m?.zabawa ?? normal.zabawa) ||
-    apetyt !== (existing?.m?.apetyt ?? normal.apetyt) ||
-    Object.keys(values).length > 0 ||
+    METRICS.some((m) => draft[m.key] !== (existing?.m?.[m.key] ?? null)) ||
+    Object.values(values).some((v) => (Array.isArray(v) ? v.length > 0 : v !== "")) ||
     note.trim().length > 0 ||
     photos.length > 0;
 
@@ -168,32 +266,64 @@ export function AddEntryScreen() {
   };
 
   const save = () => {
-    let entry: DayLog = existing
-      ? { ...existing, m: { ...existing.m, vocal, zabawa, apetyt } }
-      : { date: today, m: { vocal, zabawa, apetyt }, note: "", photos: [] };
+    // zapisujemy tylko ustawione metryki (null = brak obserwacji, nie zapisujemy nic)
+    const m: DayMetrics = { ...(existing?.m ?? {}) };
+    for (const mt of METRICS) {
+      const v = draft[mt.key];
+      if (v != null) m[mt.key] = v;
+    }
 
+    let entry: DayLog = existing
+      ? { ...existing, m }
+      : { date, m, note: "", photos: [] };
+
+    // zapisujemy tylko pola z aktualnie widocznych sekcji — chipy zaznaczone,
+    // zanim suwak schował sekcję, nie trafiają do notatki
     const lines = [
-      composeLine("Miauczenie", [
-        { label: "Powód", options: REASON_OPTS, values, key: "vocal_powod" },
-        { label: "Twoja reakcja", options: REACTION_OPTS, values, key: "vocal_reakcja" },
-      ]),
-      composeLine("Zabawa", [
-        { label: "Czas", options: CZAS_OPTS, values, key: "zabawa_czas" },
-        { label: "Zabawka", options: ZABAWKA_OPTS, values, key: "zabawa_zabawka" },
-        { label: "Czy złapał zabawkę?", options: ZLAPAL_OPTS, values, key: "zabawa_zlapal" },
-      ]),
-      composeLine("Apetyt", [
-        { label: "Od kiedy", options: OD_KIEDY_OPTS, values, key: "apetyt_od_kiedy" },
+      composeLine(
+        "Miauczenie",
+        showVocalDetails
+          ? [
+              { label: "Kiedy", options: KIEDY_OPTS, values, key: "vocal_kiedy" },
+              { label: "Powód", options: REASON_OPTS, values, key: "vocal_powod" },
+              { label: "Twoja reakcja", options: REACTION_OPTS, values, key: "vocal_reakcja" },
+            ]
+          : [],
+      ),
+      composeLine(
+        "Zabawa",
+        showPlayDetails
+          ? [
+              { label: "Czas", options: CZAS_OPTS, values, key: "zabawa_czas" },
+              { label: "Zabawka", options: ZABAWKA_OPTS, values, key: "zabawa_zabawka" },
+              { label: "Czy złapał zabawkę?", options: ZLAPAL_OPTS, values, key: "zabawa_zlapal" },
+              { label: "Posiłek po zabawie", options: POSILEK_OPTS, values, key: "zabawa_posilek" },
+            ]
+          : showPlayRefusal
+            ? [{ label: "Dlaczego nie wyszło", options: ODMOWA_OPTS, values, key: "zabawa_odmowa" }]
+            : [],
+      ),
+      composeLine(
+        "Apetyt",
+        showApetytDetails
+          ? [{ label: "Od kiedy", options: OD_KIEDY_OPTS, values, key: "apetyt_od_kiedy" }]
+          : [],
+      ),
+      composeLine("Incydenty", [
+        { label: "Zaobserwowane", options: INCYDENT_OPTS, values, key: "incydenty" },
       ]),
     ].filter(Boolean);
 
-    let combinedNote = entry.note ?? "";
+    // nowe linie strukturalne ZASTĘPUJĄ stare (zamiast doklejać duplikaty)
+    let combinedNote = lines.length > 0 ? stripComposedLines(entry.note ?? "") : entry.note ?? "";
     for (const line of lines) combinedNote = appendNote(combinedNote, line);
     if (note.trim()) combinedNote = appendNote(combinedNote, `<p>${note}</p>`);
 
     entry = { ...entry, note: combinedNote, photos: [...(entry.photos ?? []), ...photos] };
-    saveLogs([...logs.filter((l) => l.date !== today), entry]);
-    router.back();
+    saveLogs([...logs.filter((l) => l.date !== date), entry]);
+    // krótkie potwierdzenie zapisu, potem powrót
+    setSaved(true);
+    setTimeout(() => router.back(), 700);
   };
 
   return (
@@ -208,93 +338,209 @@ export function AddEntryScreen() {
         >
           <Icon name="arrowRight" size={22} className="rotate-180" />
         </button>
-        <h2 className="text-xl">Dodaj nowy wpis</h2>
+        <h2 className="text-xl">{existing ? "Edytuj wpis" : "Dodaj nowy wpis"}</h2>
       </div>
       <Squiggle className="mt-3 shrink-0" />
 
       {/* treść */}
       <div className="scroll-sketch min-h-0 flex-1 overflow-y-auto px-4 py-4">
         <div className="mx-auto flex max-w-[520px] flex-col gap-5">
-          {/* ilustracja — kalendarz */}
-          <div className="grid w-full place-items-center" aria-hidden="true">
-            <Art name="kalendarz" fluid className="w-full max-w-[360px]" />
+          {/* dzień, którego dotyczy wpis */}
+          <div className="flex flex-col gap-2">
+            <span id="wpis-data-label" className="font-hand text-base font-semibold">
+              Który dzień?
+            </span>
+            <div className="flex flex-wrap items-center gap-2" role="group" aria-labelledby="wpis-data-label">
+              <ToggleChip selected={date === today} onClick={() => setDate(today)}>
+                Dziś
+              </ToggleChip>
+              <ToggleChip selected={date === yesterday} onClick={() => setDate(yesterday)}>
+                Wczoraj
+              </ToggleChip>
+              <ToggleChip
+                selected={customDate}
+                onClick={() => dateInputRef.current?.showPicker?.() ?? dateInputRef.current?.click()}
+                aria-label="Wybierz inną datę"
+              >
+                <Icon name="today" size={16} />
+                {customDate ? fmt(date) : "Inna data"}
+              </ToggleChip>
+              <input
+                ref={dateInputRef}
+                id="wpis-data"
+                type="date"
+                value={date}
+                max={today}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v && v <= today) setDate(v);
+                }}
+                className="sr-only"
+                tabIndex={-1}
+                aria-hidden="true"
+              />
+            </div>
+            <p className="text-sm text-ink-soft first-letter:uppercase">
+              {fmtLong(date)}
+              {existing && <span className="text-ink-faint"> — ten dzień ma już wpis, edytujesz go.</span>}
+            </p>
           </div>
+
+          {/* szybki wpis: wszystko w normie jednym tapnięciem */}
+          <Button variant="secondary" block onClick={setAllNormal} disabled={allNormal}>
+            <Icon name="paw" size={18} />
+            {allNormal ? "Wszystko w normie ✓" : "Dzień jak co dzień"}
+          </Button>
+
+          <Squiggle />
+
+          {/* Aktywność */}
+          <div className="flex flex-col gap-4">
+            <SectionHeading icon="paw">Aktywność</SectionHeading>
+            <MetricChips
+              metricKey="aktywnosc"
+              value={draft.aktywnosc}
+              onChange={(v) => setMetric("aktywnosc", v)}
+            />
+          </div>
+
+          <Squiggle />
+
           {/* Miauczenie */}
           <div className="flex flex-col gap-4">
-            <h3 className="font-hand text-xl font-semibold">Miauczenie</h3>
-            <LabeledSlider options={vocalMetric.options} value={vocal} onChange={setVocal} />
-            <ChipField
-              label="Co mogło być powodem?"
-              options={REASON_OPTS}
-              multi
-              values={values}
-              fieldKey="vocal_powod"
-              onChange={setField}
+            <SectionHeading icon="vocal">Miauczenie</SectionHeading>
+            <MetricChips
+              metricKey="vocal"
+              value={draft.vocal}
+              onChange={(v) => setMetric("vocal", v)}
             />
-            <ChipField
-              label="Twoja reakcja"
-              options={REACTION_OPTS}
-              multi
-              values={values}
-              fieldKey="vocal_reakcja"
-              onChange={setField}
-            />
+            {showVocalDetails && (
+              <div className="chip-reveal flex flex-col gap-4">
+                <ChipField
+                  label="Kiedy miauczał?"
+                  options={KIEDY_OPTS}
+                  multi
+                  values={values}
+                  fieldKey="vocal_kiedy"
+                  onChange={setField}
+                />
+                <ChipField
+                  label="Co mogło być powodem?"
+                  options={REASON_OPTS}
+                  multi
+                  values={values}
+                  fieldKey="vocal_powod"
+                  onChange={setField}
+                />
+                <ChipField
+                  label="Twoja reakcja"
+                  options={REACTION_OPTS}
+                  multi
+                  values={values}
+                  fieldKey="vocal_reakcja"
+                  onChange={setField}
+                />
+              </div>
+            )}
           </div>
 
           <Squiggle />
 
           {/* Zabawa */}
           <div className="flex flex-col gap-4">
-            <h3 className="font-hand text-xl font-semibold">Zabawa</h3>
-            <LabeledSlider options={zabawaMetric.options} value={zabawa} onChange={setZabawa} />
-            <ChipField
-              label="Czas"
-              options={CZAS_OPTS}
-              values={values}
-              fieldKey="zabawa_czas"
-              onChange={setField}
+            <SectionHeading icon="feather">Zabawa</SectionHeading>
+            <MetricChips
+              metricKey="zabawa"
+              value={draft.zabawa}
+              onChange={(v) => setMetric("zabawa", v)}
             />
-            <ChipField
-              label="Zabawka"
-              options={ZABAWKA_OPTS}
-              multi
-              values={values}
-              fieldKey="zabawa_zabawka"
-              onChange={setField}
-            />
-            <ChipField
-              label="Czy kotek złapał zabawkę?"
-              options={ZLAPAL_OPTS}
-              values={values}
-              fieldKey="zabawa_zlapal"
-              onChange={setField}
-            />
+            {showPlayDetails && (
+              <div className="chip-reveal flex flex-col gap-4">
+                <ChipField
+                  label="Czas"
+                  options={CZAS_OPTS}
+                  values={values}
+                  fieldKey="zabawa_czas"
+                  onChange={setField}
+                />
+                <ChipField
+                  label="Zabawka"
+                  options={ZABAWKA_OPTS}
+                  multi
+                  values={values}
+                  fieldKey="zabawa_zabawka"
+                  onChange={setField}
+                />
+                <ChipField
+                  label="Czy kotek złapał zabawkę?"
+                  options={ZLAPAL_OPTS}
+                  values={values}
+                  fieldKey="zabawa_zlapal"
+                  onChange={setField}
+                />
+                <ChipField
+                  label="Czy po zabawie był posiłek?"
+                  options={POSILEK_OPTS}
+                  values={values}
+                  fieldKey="zabawa_posilek"
+                  onChange={setField}
+                />
+              </div>
+            )}
+            {showPlayRefusal && (
+              <div className="chip-reveal">
+                <ChipField
+                  label="Dlaczego zabawa nie wyszła?"
+                  options={ODMOWA_OPTS}
+                  multi
+                  values={values}
+                  fieldKey="zabawa_odmowa"
+                  onChange={setField}
+                />
+              </div>
+            )}
           </div>
 
           <Squiggle />
 
           {/* Apetyt */}
           <div className="flex flex-col gap-4">
-            <h3 className="font-hand text-xl font-semibold">Apetyt</h3>
-            <LabeledSlider options={apetytMetric.options} value={apetyt} onChange={setApetyt} />
-            <ChipField
-              label="Od kiedy jest mniejszy/większy?"
-              options={OD_KIEDY_OPTS}
-              values={values}
-              fieldKey="apetyt_od_kiedy"
-              onChange={setField}
+            <SectionHeading icon="bowl">Apetyt</SectionHeading>
+            <MetricChips
+              metricKey="apetyt"
+              value={draft.apetyt}
+              onChange={(v) => setMetric("apetyt", v)}
             />
+            {showApetytDetails && (
+              <div className="chip-reveal">
+                <ChipField
+                  label="Od kiedy jest mniejszy/większy?"
+                  options={OD_KIEDY_OPTS}
+                  values={values}
+                  fieldKey="apetyt_od_kiedy"
+                  onChange={setField}
+                />
+              </div>
+            )}
           </div>
 
           <Squiggle />
 
           {/* Notatka / zdjęcie */}
           <div className="flex flex-col gap-4">
-            <h3 className="font-hand text-xl font-semibold">Czy wydarzyło się coś jeszcze?</h3>
-            <NoteEditor value={note} onChange={setNote} placeholder="" ariaLabel="Dodatkowa notatka" />
+            <SectionHeading icon="note">Czy wydarzyło się coś jeszcze?</SectionHeading>
+            <ChipField
+              label="Incydenty (zaznacz, jeśli wystąpiły)"
+              options={INCYDENT_OPTS}
+              multi
+              values={values}
+              fieldKey="incydenty"
+              onChange={setField}
+            />
+            <NoteEditor value={note} onChange={setNote} placeholder="" ariaLabel="Dodatkowa notatka" simple />
             {photos.length > 0 && <PhotoThumbs photos={photos} onRemove={removePhoto} />}
             {user && (
-              <PhotoUploader userId={user.id} date={today} onAdd={(p) => setPhotos((c) => [...c, ...p])} />
+              <PhotoUploader userId={user.id} date={date} onAdd={(p) => setPhotos((c) => [...c, ...p])} />
             )}
           </div>
         </div>
@@ -303,9 +549,9 @@ export function AddEntryScreen() {
       {/* CTA */}
       <div className="shrink-0 px-4 pb-[calc(12px+env(safe-area-inset-bottom,0px))] pt-2">
         <div className="mx-auto max-w-[520px]">
-          <Button block size="lg" onClick={save}>
+          <Button block size="lg" onClick={save} disabled={!dirty || saved} aria-live="polite">
             <Icon name="check" size={22} />
-            Zapisz wpis
+            {saved ? "Zapisano ✓" : "Zapisz wpis"}
           </Button>
         </div>
       </div>
@@ -322,14 +568,14 @@ export function AddEntryScreen() {
             className="ink-edge ink-edge--soft w-full max-w-[360px] rounded-[var(--r-box-2)] bg-paper p-5"
             onClick={(e) => e.stopPropagation()}
           >
-            <p className="font-hand text-lg font-semibold">Na pewno chcesz nie zapisać wpisu?</p>
+            <p className="font-hand text-lg font-semibold">Odrzucić niezapisany wpis?</p>
             <p className="mt-1 text-sm text-ink-faint">Wprowadzone zmiany zostaną utracone.</p>
             <div className="mt-4 flex gap-2.5">
               <Button variant="secondary" className="flex-1" onClick={() => setConfirmClose(false)}>
                 Wróć do edycji
               </Button>
               <Button variant="danger" className="flex-1" onClick={() => router.back()}>
-                Nie zapisuj
+                Odrzuć
               </Button>
             </div>
           </div>

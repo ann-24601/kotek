@@ -18,7 +18,10 @@ import { cn } from "@/lib/utils";
    Wykres jednego wskaźnika — odręczny, z osiami jak w szkicu
    (Y = etykiety opcji metryki, X = daty).
    -------------------------------------------------------------- */
-const CHART_DAYS = 90;
+const CHART_RANGES = [7, 30, 90] as const;
+/* przerwa dłuższa niż tyle dni = brak danych → linia się urywa,
+   zamiast sugerować ciągły przebieg między odległymi wpisami */
+const GAP_DAYS = 7;
 
 /* gładka linia (Catmull-Rom → Bézier) z przycięciem, by nie wychodziła poza
    obszar wykresu — łagodniejsza i czytelniejsza niż ostry zygzak */
@@ -41,7 +44,7 @@ function smoothPath(pts: { x: number; y: number }[], yMin: number, yMax: number)
   return d.join(" ");
 }
 
-function MetricChart({ logs, metric }: { logs: DayLog[]; metric: Metric }) {
+function MetricChart({ logs, metric, days }: { logs: DayLog[]; metric: Metric; days: number }) {
   const W = 340;
   const H = 210;
   const padL = 48;
@@ -52,7 +55,7 @@ function MetricChart({ logs, metric }: { logs: DayLog[]; metric: Metric }) {
   const plotH = H - padT - padB;
   const maxV = Math.max(...metric.options.map((o) => o.v)) || 1;
 
-  const from = daysAgo(CHART_DAYS);
+  const from = daysAgo(days);
   const rangeStart = new Date(from).getTime();
   const rangeEnd = new Date(todayStr()).getTime();
   const rangeMs = Math.max(1, rangeEnd - rangeStart);
@@ -70,9 +73,28 @@ function MetricChart({ logs, metric }: { logs: DayLog[]; metric: Metric }) {
   // przerwy między wpisami odpowiadają rzeczywistemu upływowi czasu.
   const x = (date: string) => padL + ((new Date(date).getTime() - rangeStart) / rangeMs) * plotW;
   const y = (v: number) => padT + (1 - v / maxV) * plotH;
-  const xy = pts.map((p) => ({ x: x(p.date), y: y(p.v) }));
-  const line = smoothPath(xy, padT, padT + plotH);
-  const showDots = pts.length <= 45;
+
+  // linia urywa się przy przerwach > GAP_DAYS — osobny segment na każdą serię dni z danymi
+  const segments = useMemo(() => {
+    const gapMs = GAP_DAYS * 24 * 60 * 60 * 1000;
+    const out: { x: number; y: number }[][] = [];
+    let cur: { x: number; y: number }[] = [];
+    let prevT: number | null = null;
+    for (const p of pts) {
+      const t = new Date(p.date).getTime();
+      if (prevT != null && t - prevT > gapMs && cur.length > 0) {
+        out.push(cur);
+        cur = [];
+      }
+      cur.push({ x: x(p.date), y: y(p.v) });
+      prevT = t;
+    }
+    if (cur.length > 0) out.push(cur);
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pts, rangeStart, rangeMs, maxV]);
+
+  const dotR = pts.length > 45 ? 2.4 : 3.2;
   const labelStyle = { fill: "var(--ink-soft)", fontFamily: "var(--font-mono)", fontSize: 8 } as const;
   const midDate = new Date(rangeStart + rangeMs / 2).toISOString().slice(0, 10);
   const xTickDates = [from, midDate, todayStr()];
@@ -80,7 +102,7 @@ function MetricChart({ logs, metric }: { logs: DayLog[]; metric: Metric }) {
   if (pts.length < 2) {
     return (
       <p className="py-14 text-center text-sm text-ink-soft">
-        Za mało danych na wykres — dodaj kilka wpisów.
+        Za mało danych na wykres w tym zakresie — dodaj kilka wpisów.
       </p>
     );
   }
@@ -104,16 +126,23 @@ function MetricChart({ logs, metric }: { logs: DayLog[]; metric: Metric }) {
           {o.l.length > 14 ? o.l.slice(0, 13) + "…" : o.l}
         </text>
       ))}
-      <path
-        d={line}
-        fill="none"
-        stroke="var(--ink)"
-        strokeWidth={2.4}
-        strokeLinejoin="round"
-        strokeLinecap="round"
-        className="rough-line"
-      />
-      {showDots && pts.map((p) => <circle key={p.date} cx={x(p.date)} cy={y(p.v)} r={3.2} fill="var(--ink)" />)}
+      {segments.map((seg, i) =>
+        seg.length >= 2 ? (
+          <path
+            key={i}
+            d={smoothPath(seg, padT, padT + plotH)}
+            fill="none"
+            stroke="var(--ink)"
+            strokeWidth={2.4}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            className="rough-line"
+          />
+        ) : null,
+      )}
+      {pts.map((p) => (
+        <circle key={p.date} cx={x(p.date)} cy={y(p.v)} r={dotR} fill="var(--ink)" />
+      ))}
       {xTickDates.map((d, i) => (
         <text
           key={d}
@@ -188,19 +217,46 @@ interface Insight {
   subtitle: string;
 }
 
-function InsightCarousel({ items }: { items: Insight[] }) {
+function InsightCarousel({ items, title }: { items: Insight[]; title: string }) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const scrollBy = (dir: -1 | 1) => {
+    const el = trackRef.current;
+    if (el) el.scrollBy({ left: dir * el.clientWidth * 0.8, behavior: "smooth" });
+  };
   return (
     <div>
       <div className="mb-2 flex items-center justify-between">
-        <h2 className="text-xl">Porady</h2>
+        <h2 className="text-xl">{title}</h2>
+        {/* strzałki — na desktopie karuzela nie sugeruje, że można przewijać */}
+        <div className="hidden gap-1.5 lg:flex">
+          <button
+            type="button"
+            onClick={() => scrollBy(-1)}
+            aria-label="Przewiń porady w lewo"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border-[1.5px] border-dashed border-ink text-ink hover:bg-ink hover:text-paper"
+          >
+            <Icon name="arrowRight" size={16} className="rotate-180" />
+          </button>
+          <button
+            type="button"
+            onClick={() => scrollBy(1)}
+            aria-label="Przewiń porady w prawo"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border-[1.5px] border-dashed border-ink text-ink hover:bg-ink hover:text-paper"
+          >
+            <Icon name="arrowRight" size={16} />
+          </button>
+        </div>
       </div>
-      <div className="no-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1">
+      {/* p-1/-m-1: falująca obwódka kafelka wystaje ~4px poza jego pudełko,
+          a overflow-x-auto przycina też w pionie — padding daje linii miejsce */}
+      <div ref={trackRef} className="no-scrollbar -m-1 flex snap-x snap-mandatory gap-3 overflow-x-auto p-1">
         {items.map((it, i) => (
           <article key={i} className="flex w-[78%] shrink-0 snap-start flex-col sm:w-[46%]">
-            {/* obraz wypełnia kafelek; ramka identyczna jak w „Porada na dzisiaj" */}
+            {/* obraz wypełnia kafelek; ramka NAD obrazem — nieprzezroczyste (białe)
+                tło PNG zakrywałoby linię wszędzie, gdzie fala wygina się do środka */}
             <div className="relative h-[180px] w-full rounded-[18px] bg-paper">
-              <RoughBorder radius={18} />
               <Art name={it.art} fluid className="h-full w-full object-contain" />
+              <RoughBorder radius={18} />
             </div>
             <h3 className="mt-2.5 font-hand text-lg font-semibold leading-tight">{it.title}</h3>
             <p className="mt-0.5 text-[13px] leading-snug text-ink-soft">{it.subtitle}</p>
@@ -272,13 +328,17 @@ export function Today() {
 
   const tips = useMemo(() => rankTips(logs), [logs]);
   const [tipIdx, setTipIdx] = useState(0);
-  const tip = tips[tipIdx % tips.length]?.text ?? "";
+  const tipObj = tips[tipIdx % tips.length];
+  const tip = tipObj?.text ?? "";
+  // porady „do weterynarza" to inna waga niż wskazówki o zabawie — wyróżnij
+  const tipUrgent = tipObj?.tags?.includes("vet") ?? false;
 
   const signals = useMemo(() => computeSignals(logs), [logs]);
   const routine = useMemo(() => routineIndex(logs), [logs]);
   const preced = useMemo(() => precedersOfVocal(logs), [logs]);
 
   const [sel, setSel] = useState<keyof DayMetrics>("aktywnosc");
+  const [chartDays, setChartDays] = useState<number>(30);
   const selMetric = METRICS.find((m) => m.key === sel)!;
 
   // 4 spersonalizowane wglądy do karuzeli: rutyna, zabawa, karmienie, obserwacja
@@ -300,7 +360,7 @@ export function Today() {
         ) : null}
       </header>
 
-      {/* porada na dzisiaj */}
+      {/* porada na dzisiaj — klik podmienia na kolejną */}
       <button
         type="button"
         onClick={() => setTipIdx((i) => i + 1)}
@@ -308,26 +368,49 @@ export function Today() {
         className="group relative cursor-pointer select-none rounded-[18px] bg-paper px-4 py-3.5 text-left transition"
       >
         <RoughBorder radius={18} />
-        <span className="mb-1.5 flex items-center gap-1.5 font-hand text-sm font-bold text-ink">
-          <Icon name="refresh" size={16} />
-          Porada na dzisiaj:
+        <span className="mb-1.5 flex items-center justify-between gap-1.5">
+          <span className="flex items-center gap-1.5 font-hand text-sm font-bold text-ink">
+            <Icon name={tipUrgent ? "warn" : "refresh"} size={16} />
+            {tipUrgent ? "Ważne — kiedy do weterynarza:" : "Porada na dzisiaj:"}
+          </span>
+          <span className="font-hand text-xs font-semibold text-ink-faint group-hover:text-ink">
+            kolejna →
+          </span>
         </span>
         <span className="block text-[14px] leading-snug text-ink-soft">{tip}</span>
       </button>
 
-      {/* duży hero — obraz maksymalnie powiększony, na bieli */}
-      <div className="grid w-full place-items-center py-1">
-        <Art name="karty-i-jedzenie" fluid className="w-full max-w-[520px]" />
+      {/* hero — dekoracja; na telefonie ustępuje miejsca statystykom */}
+      <div className="hidden w-full place-items-center py-1 sm:grid">
+        <Art name="karty-i-jedzenie" fluid className="w-full max-w-[400px]" />
       </div>
 
       {/* sekcja: przebieg wskaźników (dots selector + wykres) */}
       <section className="flex flex-col gap-3">
         <div className="flex items-baseline justify-between">
           <h2 className="text-xl">Statystyki</h2>
-          <span className="font-mono text-[10px] text-ink-faint">Ostatnie {CHART_DAYS} dni</span>
+          {/* przełącznik zakresu wykresu */}
+          <div className="flex gap-1" role="group" aria-label="Zakres wykresu">
+            {CHART_RANGES.map((d) => (
+              <button
+                key={d}
+                type="button"
+                onClick={() => setChartDays(d)}
+                aria-pressed={chartDays === d}
+                className={cn(
+                  "min-h-8 rounded-full px-2.5 font-hand text-xs font-semibold",
+                  chartDays === d
+                    ? "bg-ink text-paper"
+                    : "border-[1.5px] border-dashed border-ink-faint text-ink-soft",
+                )}
+              >
+                {d} dni
+              </button>
+            ))}
+          </div>
         </div>
         <MetricDots logs={logs} selected={sel} onSelect={setSel} />
-        <MetricChart logs={logs} metric={selMetric} />
+        <MetricChart logs={logs} metric={selMetric} days={chartDays} />
         {/* krótki insight pod wykresem */}
         <p className="text-sm leading-snug text-ink-soft">
           {!signals.ready
@@ -342,7 +425,7 @@ export function Today() {
       </section>
 
       {/* karuzela wglądów */}
-      <InsightCarousel items={insights} />
+      <InsightCarousel items={insights} title={`Wskazówki dla ${name}`} />
     </div>
   );
 }
