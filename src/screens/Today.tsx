@@ -219,6 +219,13 @@ interface Insight {
 
 function InsightCarousel({ items, title }: { items: Insight[]; title: string }) {
   const trackRef = useRef<HTMLDivElement>(null);
+  // wygaszenie prawej krawędzi: kolejna karta wystaje zza ekranu celowo,
+  // ale twarde cięcie tekstu w pół słowa wygląda jak błąd — fade to sygnalizuje
+  const [atEnd, setAtEnd] = useState(false);
+  const onTrackScroll = () => {
+    const el = trackRef.current;
+    if (el) setAtEnd(el.scrollLeft + el.clientWidth >= el.scrollWidth - 8);
+  };
   const scrollBy = (dir: -1 | 1) => {
     const el = trackRef.current;
     if (el) el.scrollBy({ left: dir * el.clientWidth * 0.8, behavior: "smooth" });
@@ -249,19 +256,32 @@ function InsightCarousel({ items, title }: { items: Insight[]; title: string }) 
       </div>
       {/* p-1/-m-1: falująca obwódka kafelka wystaje ~4px poza jego pudełko,
           a overflow-x-auto przycina też w pionie — padding daje linii miejsce */}
-      <div ref={trackRef} className="no-scrollbar -m-1 flex snap-x snap-mandatory gap-3 overflow-x-auto p-1">
-        {items.map((it, i) => (
-          <article key={i} className="flex w-[78%] shrink-0 snap-start flex-col sm:w-[46%]">
-            {/* obraz wypełnia kafelek; ramka NAD obrazem — nieprzezroczyste (białe)
-                tło PNG zakrywałoby linię wszędzie, gdzie fala wygina się do środka */}
-            <div className="relative h-[180px] w-full rounded-[18px] bg-paper">
-              <Art name={it.art} fluid className="h-full w-full object-contain" />
-              <RoughBorder radius={18} />
-            </div>
-            <h3 className="mt-2.5 font-hand text-lg font-semibold leading-tight">{it.title}</h3>
-            <p className="mt-0.5 text-[13px] leading-snug text-ink-soft">{it.subtitle}</p>
-          </article>
-        ))}
+      <div className="relative">
+        <div
+          ref={trackRef}
+          onScroll={onTrackScroll}
+          className="no-scrollbar -m-1 flex snap-x snap-mandatory gap-3 overflow-x-auto p-1"
+        >
+          {items.map((it, i) => (
+            <article key={i} className="flex w-[78%] shrink-0 snap-start flex-col sm:w-[46%]">
+              {/* obraz wypełnia kafelek; ramka NAD obrazem — nieprzezroczyste (białe)
+                  tło PNG zakrywałoby linię wszędzie, gdzie fala wygina się do środka */}
+              <div className="relative h-[180px] w-full rounded-[18px] bg-paper">
+                <Art name={it.art} fluid className="h-full w-full object-contain" />
+                <RoughBorder radius={18} />
+              </div>
+              <h3 className="mt-2.5 font-hand text-lg font-semibold leading-tight">{it.title}</h3>
+              <p className="mt-0.5 text-[13px] leading-snug text-ink-soft">{it.subtitle}</p>
+            </article>
+          ))}
+        </div>
+        {/* fade nad ucinaną kartą — znika po dojechaniu do końca */}
+        {!atEnd && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -right-4 bottom-0 top-0 w-20 bg-gradient-to-l from-paper from-25% via-paper/75 to-transparent"
+          />
+        )}
       </div>
     </div>
   );
